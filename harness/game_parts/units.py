@@ -10,6 +10,7 @@ import time
 
 from ..client import TunerdError
 
+from .. import unit_hold as UH
 from . import combat_result as CR
 from .support import ROUTINE_ACTIONS, TODO_DETAIL_LEVELS, _summary_unit_row, spread_effects
 
@@ -107,7 +108,12 @@ class UnitsMixin:
             return {"ok": False, "err": f"then must be one of {list(self.HOLDS)}, not {then!r}"}
         r = self._with_attack_result(
             unit_id, x, y, lambda: self._move_unit(unit_id, x, y, pid, settle_timeout), pid)
+        r = self._refusal_names_successor(r, unit_id, pid)   # #169: a retry to an id the ruins replaced
         if then is None or not isinstance(r, dict) or not r.get("ok") or r.get("attack"):
+            return r
+        if r.get("unit_gone"):   # #169: the hold was for a unit the ruins replaced; it is the successor's to give
+            r["then"] = {"ok": False, "err": f"not given: unit {unit_id} was replaced on the way; order the hold to "
+                                             f"{(r.get('successor') or {}).get('id', 'its successor')}"}
             return r
         return self._then_hold(r, unit_id, then, pid)
 
@@ -126,6 +132,8 @@ class UnitsMixin:
             r["then"] = {"mission": mission, "ok": bool(hold.get("ok")), "when": "now"}
             if not hold.get("ok"):
                 r["then"]["err"] = hold.get("err")
+            elif hold.get("hold"):
+                r["then"]["hold"] = hold["hold"]   # #176: fortified or fortifying, off the end-turn list
             return r
         try:
             rec = self.q(self.h("set_pending_then", int(unit_id), then, pid=pid))
@@ -270,6 +278,11 @@ class UnitsMixin:
             else:
                 post = self.q(self.h('attack_after', unit_id, pre['def_player'], pre['def_unit'], pid=pid))
             r["attack"] = CR.attack_block(pre, post)
+            if r.get("identity") == "unknown":
+                # An attacker gone at the read-back died in the fight; the ruins guess (#169) is not this case.
+                for k in ("identity", "candidates", "actions"):
+                    r.pop(k, None)
+                r["note"] = f"unit {unit_id} is no longer on the map after the attack: see `attack`"
             if air:
                 self._attach_interception(r["attack"], seq0, pre, unit_id, x, y, pid)
             dtype = (pre.get("defender") or {}).get("unit")
@@ -406,7 +419,9 @@ class UnitsMixin:
             # read; the new ground itself is the map window the row offers (GitLab #153).
             cur = self.q(self.h('unit_pos', unit_id, True, pid=pid))
             if not cur.get("ok"):
-                return cur
+                # The engine took the move and the unit is gone: ruins replaced it under a new id (#169), which the
+                # reply names instead of refusing a move that happened.
+                return self._vanished_mover(unit_id, r, x, y, pid)
             if (cur["x"], cur["y"]) != (r["x"], r["y"]) or cur["moves"] != r["moves"]:
                 _offer_map_window(cur)
                 # Say whether it got there: activity MISSION alone left "moved (24,23)->(24,29), asked for
@@ -1021,6 +1036,12 @@ class UnitsMixin:
         """Fold a unit_pos reading taken after `mission` into its result `r`."""
         if isinstance(after, dict) and after.get("ok"):
             r.update({k: after[k] for k in ("x", "y", "moves", "activity", "activity_name") if k in after})
+            # GitLab #176: what the hold left the unit doing -- fortified or fortifying (and when the bonus is full),
+            # whether the end-turn list still names it, what its moves left mean -- read from the same facts as
+            # the unit list and todo.units, so the reply and the turn status agree.
+            hold = UH.describe(mission, after)
+            if hold:
+                r["hold"] = hold
             # A route the engine drops ("Route to cancelled!": no path, or nothing left to build on it) leaves the
             # worker AWAKE; the bare ok:true read like it was on its way (live t96, Agaidika -> capital).
             if mission == "MISSION_ROUTE_TO" and after.get("activity_name") == "AWAKE" and after.get("buildtype", -1) == -1:

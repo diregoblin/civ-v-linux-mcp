@@ -53,6 +53,7 @@ MANIFEST: tuple[str, ...] = (
     "diplomacy_actions.lua",  # met-civ list with war/peace facts, enum-name cache (H.enum_name), discussion events
     "city_strikes.lua",       # city ranged attacks, units on a plot
     "unit_orders.lua",        # promotion, upgrade, disband
+    "successors.lua",         # the unit that replaced one of mine under a new id (a ruins upgrade during a move)
     "choices.lua",            # popup choosers: steal tech, policy, free great person, goody hut, ideology, Maya, archaeology
     "religion.lua",           # religion overview, faith purchases, beliefs, pantheon and religion founding
     "deals.lua",              # deal items and catalogs, incoming/current deals, peace and third-party catalogs, vote gate

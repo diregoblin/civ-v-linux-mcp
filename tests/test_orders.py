@@ -310,6 +310,17 @@ class DecideTests(unittest.TestCase):
         o["step"] = 1
         self.assertEqual(O.decide(o, facts(), 10)["args"]["mission"], "MISSION_FORTIFY")
 
+    def test_a_hold_after_a_rest_wakes_the_unit_first_and_a_held_unit_is_done(self):
+        """GitLab #176 note (Celts t24): "heal to 90, then fortify" healed to 90 and its fortify was refused as not
+        legal -- the Warrior was still in ACTIVITY_HEAL, and the engine takes no new hold from a waiting unit."""
+        o = order([{"kind": "heal", "hp": 80}, "hold"], step=1)
+        d = O.decide(o, facts(hp=90, activity="HEAL"), 10)
+        self.assertEqual(d["args"], {"unit_id": 7, "mission": "MISSION_FORTIFY", "wake_first": True})
+        self.assertNotIn("wake_first", O.decide(o, facts(activity="AWAKE"), 10)["args"])
+        d = O.decide(o, facts(activity="SLEEP"), 10)     # already fortified (or fortifying): nothing to send
+        self.assertEqual(d["do"], "next")
+        self.assertIn("already holding", d["note"])
+
     def test_a_lost_or_reused_unit_fails_and_an_upgrade_is_named(self):
         o = order(self.MOVE_BUILD)
         f = {"turn": 10, "units": {"7": {"id": 7, "missing": True,
@@ -512,10 +523,16 @@ class SimGame(Game):
         if mission == "MISSION_BUILD":
             u["build"], u["build_left"] = build, self.build_turns
             return {"ok": True, "build": build, "turns_left": self.build_turns}
+        if mission == "COMMAND_WAKE":
+            u["activity"] = "AWAKE"
+            return {"ok": True, "command_pending": mission}
+        if mission in O.HOLD_MISSIONS.values() and u.get("activity") in O.WAITING:
+            # CvUnit::isWaiting: a resting unit takes no new hold until it is woken
+            return {"ok": False, "err": "action is not currently legal", "legal_missions": ["COMMAND_WAKE"]}
         if mission == "MISSION_HEAL":
             u["activity"] = "HEAL"
         else:
-            u["activity"] = "SLEEP_OR_FORTIFY"
+            u["activity"] = "SLEEP"
         return {"ok": True}
 
     def expiring_city_states(self, pid=None):
@@ -604,6 +621,16 @@ class GameOrderTests(unittest.TestCase):
         out = self.arrive(g)                             # 80: moves on and holds, same turn
         self.assertEqual(out["rows"][0]["status"], "completed", out)
         self.assertEqual([c[0:3] for c in g.calls][-2:], [("move_unit", 7, 3), ("unit_mission", 7, "MISSION_FORTIFY")])
+
+    def test_heal_then_hold_wakes_the_healed_unit_before_the_fortify(self):
+        g = SimGame()
+        g.units[7]["hp"] = 60
+        r = g.give_order(7, [{"kind": "heal", "hp": 80}, "hold"])
+        self.assertEqual(r["order"]["state"], "healing")
+        out = self.arrive(g)                             # 80 of 100: still resting in HEAL, the hold step runs
+        self.assertEqual(out["rows"][0]["status"], "completed", out)
+        self.assertEqual([c[2] for c in g.calls if c[0] == "unit_mission"][-2:], ["COMMAND_WAKE", "MISSION_FORTIFY"])
+        self.assertEqual(g.units[7]["activity"], "SLEEP")
 
     def test_a_hold_uses_whichever_of_fortify_and_sleep_the_unit_is_offered(self):
         g = SimGame()

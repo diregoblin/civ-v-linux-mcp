@@ -2,8 +2,10 @@
 local info_id, info_type, move_denom = H._ns.info_id, H._ns.info_type, H._ns.move_denom
 local short = H._ns.short
 
--- ActivityTypes as the unit panel shows them (raw ints otherwise mean nothing to a caller).
-local ACTIVITY_NAMES = { [0] = "AWAKE", [1] = "HOLD", [2] = "SLEEP_OR_FORTIFY", [3] = "HEAL", [4] = "SENTRY", [5] = "INTERCEPT", [6] = "MISSION" }
+-- ActivityTypes by the engine's own names (raw ints otherwise mean nothing to a caller), the words units() reads
+-- through H.unit_activity. ACTIVITY_SLEEP is both a sleep and a fortify; `hold` (H.unit_hold_state) says which
+-- (GitLab #176: "SLEEP_OR_FORTIFY" here and "SLEEP" in the unit list described one warrior two ways).
+local ACTIVITY_NAMES = { [0] = "AWAKE", [1] = "HOLD", [2] = "SLEEP", [3] = "HEAL", [4] = "SENTRY", [5] = "INTERCEPT", [6] = "MISSION" }
 function H.activity_name(a) return ACTIVITY_NAMES[a] or tostring(a) end
 
 -- reveal=true (the read-back after move_unit): adds `revealed`, what the move showed (H.reveal_diff).
@@ -17,6 +19,7 @@ function H.unit_pos(unit_id, pid, reveal)
     activity = u.GetActivityType and u:GetActivityType() or nil,
     activity_name = u.GetActivityType and H.activity_name(u:GetActivityType()) or nil,
     buildtype = u.GetBuildType and u:GetBuildType() or nil,
+    hold = H.unit_hold_state(u),   -- #176: fortified or fortifying, and whether the end-turn list still wants it
   }
   if reveal then
     local okr, diff = pcall(H.reveal_diff, unit_id, pid)

@@ -167,7 +167,10 @@ class TodoActionsDetailTests(unittest.TestCase):
         stripped = [{k: ([{kk: vv for kk, vv in x.items() if kk not in ("call", "read", "calls")} if isinstance(x, dict) else x   # calls: #102
                           for x in v] if isinstance(v, list) else v) for k, v in u.items()} for u in r["units"]]
         self.assertEqual(stripped, NORMAL["units"])
-        self.assertTrue(all("call" in a for u in r["units"] for a in u["actions"] if a["type"] != "COMMAND_WAKE"))
+        self.assertTrue(all("call" in a for u in r["units"] for a in u["actions"]))
+        # GitLab #176: Wake is a complete order too, not a row the seat has to guess the call for
+        self.assertEqual(r["units"][0]["actions"][1]["call"],
+                         {"tool": "order", "args": {"to": "unit", "action": "mission", "id": 475136, "args": {"mission": "COMMAND_WAKE"}}})
         self.assertEqual(r["units"][2]["attack_targets"][0]["call"], {"tool": "order", "args": {"to": "unit", "action": "move", "id": 11, "args": {"x": 4, "y": 4}}})
         self.assertEqual(r["units"][2]["promotions"][0]["call"]["args"], {"to": "unit", "action": "promote", "id": 11, "args": {"promotion": "PROMOTION_SHOCK_1"}})
         self.assertEqual(r["units"][0]["actions"][3]["read"]["args"]["view"], "targets")

@@ -347,7 +347,15 @@ class EventsMixin:
                 d.pop("note", None)
                 d["how"] = "ruins"
                 was = d.get("unit_type") or "unit"
-                if reborn:
+                if d.get("new_unit") is not None:
+                    # GitLab #169 (Maya t5): the order's read-back found the successor (successors.lua) and put it on
+                    # this row with the ruins plot; the row says who moved the unit there, never a guess.
+                    who = {"order": "your move", "standing_move": "its standing move"}.get(d.get("moved_by"))
+                    how = f" ({who} took it there)" if who else ""
+                    d["summary"] = (f"your {was} found advanced weapons in the ruins at ({d['x']},{d['y']}){how} and "
+                                    f"became a {d.get('new_type') or 'stronger unit'} (new id {d['new_unit']})")
+                    inherited.update(id(f) for f in reborn)
+                elif reborn:
                     s = reborn[0]["data"]["side"]
                     d["new_unit"], d["new_type"] = reborn[0]["data"].get("unit_id"), s.get("unit")
                     d["hp"] = s.get("hp")
@@ -355,7 +363,12 @@ class EventsMixin:
                                     f"a {s.get('unit')} (new id {d['new_unit']}, {s.get('hp')} hp kept)")
                     inherited.update(id(f) for f in reborn)
                 else:
-                    where = (f"last recorded at ({d['x']},{d['y']}); it moved on automation since, the ruins plot is where it stands now"
+                    # #100's fallback: the unit was gone from the map inside the destroy hook, so the plot is the roster's
+                    # last note of it. Automation is named only when the roster saw it moving on its own (#169: a manual
+                    # move read "it moved on automation since").
+                    since = ("it was moving on its own (automated or a standing move) since" if d.get("moving")
+                             else "it moved since")
+                    where = (f"last recorded at ({d['x']},{d['y']}); {since}, the ruins plot is where the new unit stands"
                              if d.get("plot_from") == "roster" else f"at ({d['x']},{d['y']})")
                     d["summary"] = (f"your {was} {where} found advanced weapons in the ruins and became "
                                     f"a stronger unit (state(what='units') lists the new id at that plot)")

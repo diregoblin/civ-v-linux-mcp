@@ -298,6 +298,10 @@ class UnitOrdersMixin:
         if tool == "move_unit":
             return self.move_unit(int(args["unit_id"]), int(args["x"]), int(args["y"]))
         if tool == "unit_mission":
+            if args.get("wake_first"):
+                # A hold step reached while the unit still rests from the step before (healing, asleep, skipping):
+                # the engine takes no new hold from a waiting unit, so wake it first, as the unit panel's Wake does.
+                self.unit_mission(int(args["unit_id"]), "COMMAND_WAKE")
             r = self.unit_mission(int(args["unit_id"]), args["mission"], build=args.get("build"))
             # A hold means "stay here": the unit panel offers Fortify or Sleep, never both (Sleep is for units that
             # cannot fortify; live t44 a Scout's MISSION_SLEEP was illegal while MISSION_FORTIFY was listed).

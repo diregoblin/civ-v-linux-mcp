@@ -17,6 +17,36 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
 ## Unreleased
 
 ### Fixed
+- **A hold order says what the unit is doing, and Wake is a row** (GitLab #176, runtime v333, three-seat hotseat,
+  seat 1 Celts t7 / t12 / t24). MISSION_FORTIFY on a Warrior that had moved answered `activity_name:
+  SLEEP_OR_FORTIFY` with its move left, units() read `SLEEP`, `fortified: false`, todo.units no longer named it,
+  and its actions offered COMMAND_WAKE with no `call`. That is the engine's fortify: ACTIVITY_SLEEP plus a fortify
+  count (GetFortifyTurns) that starts at the unit's next turn start when it moved this turn, grows to
+  MAX_FORTIFY_TURNS (2 x 20% in BNW); no hold spends moves, and a holding unit is not IsReadyToMove, the end-turn
+  list. A hold's reply (fortify, sleep, alert, skip, heal, garrison, wake) now carries `hold` from the same facts
+  the unit list and todo.units read (H.unit_hold_state): `state` fortified / fortifying / asleep / alert /
+  skipping / healing / awake, `fortify_turns`, `full_in`, `needs_orders`, a `summary`, and `moves` saying what the
+  moves left mean; a move's `then` carries it too. units() rows add `fortifying`. The activity word is the
+  engine's (`SLEEP`, as units() says) instead of SLEEP_OR_FORTIFY. COMMAND_WAKE and COMMAND_CANCEL rows carry
+  their `call` (order(to="unit", action="mission", args={mission})). A standing order's hold step wakes a unit
+  still resting from a heal first (t24: "heal to 90, then fortify" paused on "action is not currently legal",
+  since the engine takes no new hold from a waiting unit) and is done at once for a unit already holding. Not yet
+  seen live: GetFortifyTurns 1 at once for a fortify with full moves.
+- **A move that ruins replace the unit on is a success that names the new unit** (GitLab #169, runtime v333,
+  three-seat hotseat, seat 0 Maya t5, seat 1 Celts t22). Scout 24576 moved onto ruins at (22,21) and became Mayan
+  Atlatlist 32770; the reply was `{"ok": false, "err": "no such unit"}` because the read-back found the old id
+  gone, the next digest placed the Scout at its turn-start plot and said it "moved on automation", and
+  assignment 8 stayed on the vanished id. The read-back now asks the runtime for the successor
+  (harness/lua/runtime/successors.lua: one of my units created this turn whose type the old one upgrades or
+  ruins-upgrades to -- Unit_ClassUpgrades or Units.GoodyHutUpgradeUnitClass -- on the destination first) and
+  answers ok with `successor` {id, type, x, y, moves, hp}, `moved_from`, `unit_gone`, a tactical-view row for the
+  new id, and `carried_over` (assignments and the open order follow it, as after an upgrade); with no single
+  successor it says the move ran and `identity: "unknown"`, never a refusal. The successor is recorded and put on
+  the unit_destroyed row, so the digest's unit_upgraded row names the new id and the ruins plot and says "your
+  move took it there"; the roster fallback (#100) names automation only when the roster saw the unit moving on
+  its own. A retry to the old id, or an order from a briefing older than a standing move's ruins (Celts t22), is
+  refused naming the successor. Game.UnitSuccessorsMixin (harness/game_parts/unit_successors.py) keeps units.py
+  from growing. Not yet seen live: the successor read right after the move (the new unit's GetGameTurnCreated).
 - **A standing order that completes at the turn start is counted closed** (GitLab #181, three-seat hotseat, seat 0
   Maya t26; a regression past #113). The finish that ended t25 said `orders: {open: 1, paused: 0}` over a single
   row with `status: completed`: the turn-start window took `open` from the orders it was about to run, before the

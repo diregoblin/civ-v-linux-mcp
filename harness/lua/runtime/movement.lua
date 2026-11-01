@@ -202,7 +202,12 @@ function H.move_unit(unit_id, x, y, pid)
   else
     H.pending_moves[H.pm_key(unit_id, pid)] = { x = x, y = y, pid = pid, unit_id = unit_id }
   end
-  return { ok = true, x = x0, y = y0, moves = m0 / move_denom(), swap_candidates = swap_candidates }
+  local out = { ok = true, x = x0, y = y0, moves = m0 / move_denom(), swap_candidates = swap_candidates }
+  -- type and max_moves: what the read-back needs to find the unit's successor when the move replaced it (#169).
+  -- The move is sent: nothing read after it may turn the answer into an error.
+  pcall(function() out.type = short(info_type(GameInfo.Units, u:GetUnitType())) end)
+  pcall(function() out.max_moves = u:MaxMoves() / move_denom() end)
+  return out
 end
 
 -- The destination checks move_unit makes before it sends anything: each is an order the engine accepts and

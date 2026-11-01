@@ -706,10 +706,15 @@ function H.install_hooks()
       else
         local r = H.roster and H.roster[playerID] and H.roster[playerID][unitID]
         -- The roster's plot is where the unit was last noted (turn start, turn end, a harness move): a unit the
-        -- engine moved on automation since (an explorer taking ruins, #100) stood elsewhere. Say which it is.
-        if r then d.unit_type, d.x, d.y, d.plot_from = r.unit, r.x, r.y, "roster" end
+        -- engine moved on automation since (an explorer taking ruins, #100) stood elsewhere. Say which it is, and
+        -- whether the roster saw it moving on its own (automated or on a standing move) -- never assume it (#169).
+        if r then
+          d.unit_type, d.x, d.y, d.plot_from = r.unit, r.x, r.y, "roster"
+          if r.automated or r.moving then d.moving = true end
+        end
       end
     end)
+    pcall(H.attach_successor, d)   -- #169: the unit my order saw replaced (successors.lua), with the plot it took
     pcall(H.link_late_capture, d)
     local audience
     pcall(function()

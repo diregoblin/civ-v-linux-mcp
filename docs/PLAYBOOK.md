@@ -229,7 +229,11 @@ forfeited. Decide for every unit you touched before the turn closes: give it a c
 batch (a longer move, `MISSION_FORTIFY`, `MISSION_SLEEP`, or `MISSION_SKIP` when it has nothing to do), or,
 when the refusal comes, treat the reply's end_turn object's `todo.units` as the list of open decisions and
 pass its `skip_actions` (the MISSION_SKIP orders for exactly those units) as the next finish's `actions` only
-for the units you mean to leave.
+for the units you mean to leave. A hold's reply carries `hold`: what the unit is doing (`fortified`, or
+`fortifying` -- a unit that moved this turn starts its bonus at its next turn start), `needs_orders` (false: it is
+off `todo.units` and does not hold up the finish) and what any moves left mean (a hold spends none; a move or an
+attack ends it; COMMAND_WAKE's row wakes it). A move into ruins that upgrade the unit answers ok with `successor`
+{id, type, x, y}: the old id is gone, order the new one (its assignments and open order follow it).
 
 Every row a reply hands you is callable as it is: a gate's `actions`, a unit's `actions`, a choice's `call`, a
 `{tool, args}` row inside a batch. The old tool names (one per button, before version 2.0.0) still run and

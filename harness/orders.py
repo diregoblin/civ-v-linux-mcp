@@ -41,7 +41,13 @@ OPEN = ("active", "paused")          # statuses that own their unit
 #: this turn, so the pause skips the unit for the turn (it never blocks the end turn), and the order tries the
 #: destination again at the next turn start by itself instead of waiting for a manual resume.
 DESTINATION_PAUSES = ("destination", "enemy_on_destination")
-RESTING = ("SLEEP_OR_FORTIFY", "HEAL")
+RESTING = ("SLEEP", "HEAL")
+#: The activity each hold leaves the unit in (ACTIVITY_SLEEP is a fortify for a unit that can fortify, GitLab #176).
+HOLD_ACTIVITY = {"fortify": "SLEEP", "sleep": "SLEEP", "alert": "SENTRY"}
+#: Activities in which the engine refuses a new hold (CvUnit::isWaiting: canFortify / canSleep / canSentry are false):
+#: the unit is woken first (GitLab #176 note, Celts t24: "heal to 90 then fortify" paused on "action is not
+#: currently legal" because the healed Warrior was still in ACTIVITY_HEAL).
+WAITING = ("HOLD", "SLEEP", "HEAL", "SENTRY", "INTERCEPT")
 
 
 class OrderError(AssignmentError):
@@ -309,10 +315,15 @@ def decide(o: dict, facts: dict, turn: int | None) -> dict:
         return {**base, "do": "issue", "tool": "unit_mission", "args": {"unit_id": u["id"], "mission": "MISSION_HEAL"},
                 "what": step_label(st)}
     # hold
+    activity = u.get("activity")
+    if activity == HOLD_ACTIVITY.get(st["mission"]):
+        return {**base, "do": "next", "note": f"already holding ({activity.lower()})"}
     if moves <= 0 and not issued_now:
         return {**base, "do": "wait", "state": "no_moves", "note": "no moves left this turn; it fortifies next turn"}
-    return {**base, "do": "issue", "tool": "unit_mission",
-            "args": {"unit_id": u["id"], "mission": HOLD_MISSIONS[st["mission"]]}, "what": step_label(st)}
+    args = {"unit_id": u["id"], "mission": HOLD_MISSIONS[st["mission"]]}
+    if activity in WAITING:
+        args["wake_first"] = True
+    return {**base, "do": "issue", "tool": "unit_mission", "args": args, "what": step_label(st)}
 
 
 def build_blocked_reason(b: dict, build: str, at: tuple) -> str:

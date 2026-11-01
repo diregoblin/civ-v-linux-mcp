@@ -343,7 +343,8 @@ percent (off by default, never during a heal), an enemy stands on the destinatio
 a move would refuse the destination, a step is refused, the unit is not where a build needs it, the unit
 makes no progress for a turn, a save was loaded, or I give that unit a direct order (a move or
 mission takes it back; a MISSION_BUILD on another plot is itself a walk-then-build order, which replaces the
-unit's open order and stays active). The reply's `at` is where the run left the unit. A lost or replaced unit fails the order. An order never declares war, attacks,
+unit's open order and stays active). The reply's `at` is where the run left the unit. A hold step wakes a unit
+still resting from the step before (healing) first, and is done at once for a unit already fortified or asleep. A lost or replaced unit fails the order. An order never declares war, attacks,
 ends the turn or touches any other unit. A unit on automation (AUTOMATE_BUILD / AUTOMATE_EXPLORE) leaves it the moment its order is stored, even when no step could run yet (`automation_stopped`), so the game never walks it away first. One open order per unit: replace_id replaces one (a new unit id
 after an upgrade too). A first step that cannot run now refuses the order and stores nothing. Stored in my
 notebook, so orders survive a restart; the briefing lists them.

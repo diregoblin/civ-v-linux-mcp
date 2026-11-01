@@ -217,6 +217,28 @@ function H.unit_holding(u)
   end)
   return ok and v == true or false
 end
+-- GitLab #176 (Celts t7): MISSION_FORTIFY on a Warrior that had moved answered SLEEP_OR_FORTIFY with its move left,
+-- and units() read activity SLEEP, fortified false. The engine's fortify IS ACTIVITY_SLEEP plus a fortify count
+-- (GetFortifyTurns) that grows by one at each of the unit's turn starts up to MAX_FORTIFY_TURNS, worth
+-- FORTIFY_MODIFIER_PER_TURN percent each (the unit list and the flag say "Fortified" once it is above 0;
+-- militaryoverview.lua / unitlist.lua). A unit that can fortify is never put to plain sleep (its Sleep button is
+-- Fortify), so asleep with a count of 0 is a fortify that starts counting next turn. The moves are not spent, and
+-- a unit in any hold is not IsReadyToMove: todo.units (turn.lua) no longer lists it. The order's reply and the
+-- unit list read these same facts, so they say the same thing.
+function H.unit_fortifying(u)
+  local ok, v = pcall(function()
+    return u:GetFortifyTurns() == 0 and u:IsEverFortifyable() and H.unit_activity(u) == "SLEEP"
+  end)
+  return ok and v == true or false
+end
+function H.unit_hold_state(u)
+  local out = { activity = H.unit_activity(u) }
+  pcall(function() out.fortify_turns = u:GetFortifyTurns() end)
+  pcall(function() out.fortifyable = u:IsEverFortifyable() end)
+  pcall(function() out.needs_orders = u:IsReadyToMove() and not u:IsAutomated() and not u:IsDelayedDeath() end)
+  pcall(function() out.fortify_max, out.fortify_pct = GameDefines.MAX_FORTIFY_TURNS, GameDefines.FORTIFY_MODIFIER_PER_TURN end)
+  return out
+end
 
 function H.units(pid)
   local p = Players[pid]
@@ -233,6 +255,7 @@ function H.units(pid)
       -- GitLab #128 (Siam t24): a sleeping Scout read fortified false while MISSION_FORTIFY was refused as "already
       -- holding" -- a scout cannot fortify, it sleeps. `activity` is the engine's word; `holding` is true for any hold.
       activity = H.unit_activity(u), holding = H.unit_holding(u),
+      fortifying = H.unit_fortifying(u) or nil,   -- #176: fortify ordered, the bonus counts from its next turn start
       garrisoned = (u.IsGarrisoned and u:IsGarrisoned()) or false,
       mission = mission, domain = short(info_type(GameInfo.Domains, u:GetDomainType())),
       level = u.GetLevel and u:GetLevel() or nil, xp = u.GetExperience and u:GetExperience() or nil,

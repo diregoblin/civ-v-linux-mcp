@@ -1,6 +1,6 @@
 -- Harness runtime injected into the InGame Lua state through the tuner.
 -- Everything lives under the global table H so re-injection is idempotent.
-local RUNTIME_VERSION = 332
+local RUNTIME_VERSION = 333
 if H and H.version == RUNTIME_VERSION then return true end  -- true: tells the installer to stop here
 local old = H
 -- _enum_names is intentionally NOT carried over from `old`: it is a pure cache derived from live game
@@ -27,6 +27,7 @@ H = { version = RUNTIME_VERSION, events = old and old.events or {}, event_seq = 
       pending_moves = old and old.pending_moves or {},  -- unit_id -> {x, y}: standing move orders (see H.resume_moves)
       reveal_marks = {},  -- pm_key -> what was revealed around a unit when move_unit sent it (H.reveal_mark / H.reveal_diff); per call, never carried
       hp_snaps = old and old.hp_snaps or {},  -- seat -> own units' hp at its turn end (H.hp_snapshot / H.hp_compare)
+      successors = old and old.successors or {},  -- seat -> old unit id -> the unit that replaced it under a new id (successors.lua, #169)
       roster = old and old.roster or {},  -- seat -> unit id -> {unit, x, y}: last-known own units (H.note_units), for losses the destroy event no longer lets us read
       turn_seat = old and old.turn_seat or nil,  -- the seat whose turn is running (ActivePlayerTurnStart); GetActivePlayer already names the next seat when ActivePlayerTurnEnd fires in hotseat
       alive_majors = old and old.alive_majors or nil }  -- player id -> true at the last turn start (H.check_eliminations)

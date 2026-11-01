@@ -10,12 +10,16 @@ from __future__ import annotations
 from ..rows import act, pick
 
 #: A unit command and the tool that presses it, with the arguments left to choose. Any other COMMAND_ (promotion:
-#: the promotion rows; hotkey, cancel, wake: routine or not an order) makes no row -- unit_mission takes none of
-#: them (live Assyria t238: an Infantry's COMMAND_GIFT came out as a unit_mission row the engine would refuse).
+#: the promotion rows; hotkey: not an order) makes no row (live Assyria t238: an Infantry's COMMAND_GIFT came out
+#: as a unit_mission row the engine would refuse).
 COMMAND_TOOLS: dict[str, tuple[str, list[str]]] = {
     "COMMAND_UPGRADE": ("upgrade_unit", []), "COMMAND_DELETE": ("disband_unit", []),
     "COMMAND_GIFT": ("gift_unit", ["minor_id"]),
 }
+#: The unit panel's commands unit_mission sends as they are (a DO_COMMAND, movement.lua): Wake ends a hold, Cancel
+#: drops a queued move. GitLab #176 (Celts t7): a fortified Warrior's actions listed COMMAND_WAKE with no `call`,
+#: and the seat had to guess the order that woke it.
+MISSION_COMMANDS = frozenset({"COMMAND_WAKE", "COMMAND_CANCEL"})
 RANGE_ATTACK = "MISSION_RANGE_ATTACK"
 #: The read that lists a targeted mission's choices, by the view the engine's row names in `target_view` (a
 #: rebase's, an air strike's or a nuke's plots; a trade unit's or Great Admiral's home cities).
@@ -33,6 +37,8 @@ def action_rows(uid, a: dict) -> list[dict]:
     if kind == "build":
         return [act("unit_mission", unit_id=uid, mission="MISSION_BUILD", build=typ)]
     if kind == "command":
+        if typ in MISSION_COMMANDS:
+            return [act("unit_mission", unit_id=uid, mission=typ)]
         if str(typ) not in COMMAND_TOOLS:
             return []
         tool, choose = COMMAND_TOOLS[str(typ)]

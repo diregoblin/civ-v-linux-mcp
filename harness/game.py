@@ -30,6 +30,7 @@ from .game_parts.reads import ReadsMixin
 from .game_parts.cities import CitiesMixin
 from .game_parts.units import UnitsMixin
 from .game_parts.unit_orders import UnitOrdersMixin
+from .game_parts.unit_successors import UnitSuccessorsMixin
 from .game_parts.notebook import NotebookMixin
 from .game_parts.diplomacy import DiplomacyMixin
 from .game_parts.friendship import FriendshipMixin
@@ -77,7 +78,7 @@ def _h_expr(name: str, args: tuple, seat: int) -> str:
 
 @dataclass
 class Game(FrontEndMixin, TurnMixin, PopupsMixin, EventsMixin, ReadsMixin, CitiesMixin, UnitsMixin,
-           UnitOrdersMixin, NotebookMixin, DiplomacyMixin, FriendshipMixin, EspionageMixin, DealsMixin, PoliciesMixin,
+           UnitOrdersMixin, UnitSuccessorsMixin, NotebookMixin, DiplomacyMixin, FriendshipMixin, EspionageMixin, DealsMixin, PoliciesMixin,
            TradeRoutesMixin):
     """One player's hands on the game through tunerd. The fields below are the whole state; everything else
     is a read or an order sent to the Lua runtime (H.*) and read back."""
