@@ -60,7 +60,8 @@ the run by itself; a row's `attention` does (ongoing:<unit_id>:camp / hostile / 
 an explorer simply exploring lets the run continue, one beside a visible camp or brute stops it.
 `expiring_deals` / `expiring_friendships` wake it like an expiring city-state ally does.
 `status.orders` (when I have conditional orders, see notebook(action="give_order")) says what each did at this turn start: rows
-with `did`, `status`, `state`, `pause`; an order that paused, failed or completed wakes the run
+with `did`, `status`, `state`, `pause`, counted after the orders ran: `open` (active + paused), `paused`, and
+`closed` (only when a row completed, failed or was replaced in this run); an order that paused, failed or completed wakes the run
 (order:<id>:<status>), one simply walking or building does not. With briefing=true the top-level `orders`
 keeps only each order's id, unit, status and `did`; its state (now, pause, steps) is in briefing.orders.
 
@@ -341,7 +342,8 @@ are acknowledged), the unit was damaged (interrupt.damaged, default true), hp is
 percent (off by default, never during a heal), an enemy stands on the destination (an order never attacks),
 a move would refuse the destination, a step is refused, the unit is not where a build needs it, the unit
 makes no progress for a turn, a save was loaded, or I give that unit a direct order (a move or
-mission takes it back). A lost or replaced unit fails the order. An order never declares war, attacks,
+mission takes it back; a MISSION_BUILD on another plot is itself a walk-then-build order, which replaces the
+unit's open order and stays active). The reply's `at` is where the run left the unit. A lost or replaced unit fails the order. An order never declares war, attacks,
 ends the turn or touches any other unit. A unit on automation (AUTOMATE_BUILD / AUTOMATE_EXPLORE) leaves it the moment its order is stored, even when no step could run yet (`automation_stopped`), so the game never walks it away first. One open order per unit: replace_id replaces one (a new unit id
 after an upgrade too). A first step that cannot run now refuses the order and stores nothing. Stored in my
 notebook, so orders survive a restart; the briefing lists them.

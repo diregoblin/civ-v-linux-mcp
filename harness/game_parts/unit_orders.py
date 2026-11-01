@@ -1,6 +1,8 @@
 """Standing orders: give_order and the runner that advances each order at the start of a turn (harness/orders.py holds the step logic)."""
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from .. import affordances as AF
 
 from ..client import TunerdError
@@ -101,6 +103,9 @@ class UnitOrdersMixin:
             o, did = self._run_order(nb, o, "given", facts)
             if did:
                 out["did"] = did
+            seen = o.get("seen") or {}
+            if seen.get("x") is not None:
+                out["at"] = {"x": seen["x"], "y": seen.get("y")}   # where the run left the unit (#182)
         # A unit on automation (a Worker on AUTOMATE_BUILD) keeps it until a move_unit / unit_mission replaces it.
         # An order whose first step could only wait (no moves left this turn, or start=False) issued nothing, and
         # the game's automation then walked the unit away at the next turn start, before the harness ran the
@@ -187,15 +192,39 @@ class UnitOrdersMixin:
             out["standing_move_dropped"] = released
         return out
 
-    def note_manual_order(self, unit_id: int, tool: str) -> dict | None:
+    def order_holding(self, unit_id: int) -> int | None:
+        """The id of the open order that owns `unit_id` now (stored state, no game read); None when none does."""
+        try:
+            return next((x["id"] for x in self.notebook().orders("open") if x["unit"]["id"] == int(unit_id)), None)
+        except (TunerdError, OSError, ValueError, KeyError, TypeError):
+            return None
+
+    def direct_command(self, unit_id: int, tool: str, command: Callable[[], dict]) -> dict:
+        """Run a direct command to one of my units (`command`, the move / mission call) under the one-owner rule
+        (#32): when it is accepted, the order that held the unit BEFORE it is taken (note_manual_order) and the
+        reply says so (`order_paused` / `order_replaced`). An order the command itself creates -- a MISSION_BUILD
+        on another plot becomes a walk-then-build order -- is the command's own and stays active (GitLab #182,
+        hotseat Celts t18: the remote farm's order 1 was paused by the very reply that created it)."""
+        held = self.order_holding(unit_id)
+        r = command()
+        if held is not None and isinstance(r, dict) and r.get("ok"):
+            took = self.note_manual_order(unit_id, tool, order_id=held)
+            if took:
+                r["order_replaced" if took.get("status") == "replaced" else "order_paused"] = took   # replaced: #143
+        return r
+
+    def note_manual_order(self, unit_id: int, tool: str, order_id: int | None = None) -> dict | None:
         """A direct order to a unit an open order owns takes the unit. An active order pauses (never fights the
         command; resume hands the unit back). A paused order had already given the unit up: the direct order
         replaces it, and it closes as `replaced` (GitLab #143, Maya t234: a Musician's paused order kept its old
-        destination and the todo's stalled_mission row after a direct move had taken the unit elsewhere). The
-        answer names what happened; None when no open order holds the unit."""
+        destination and the todo's stalled_mission row after a direct move had taken the unit elsewhere).
+        `order_id` names the order that held the unit when the command was given (direct_command reads it first);
+        an order opened since is left alone. None takes whichever open order holds the unit. The answer names
+        what happened; None when no such order is open."""
         try:
             nb = self.notebook()
-            o = next((x for x in nb.orders("open") if x["unit"]["id"] == int(unit_id)), None)
+            o = next((x for x in nb.orders("open") if x["unit"]["id"] == int(unit_id)
+                      and (order_id is None or x.get("id") == order_id)), None)
         except (TunerdError, OSError, ValueError, KeyError, TypeError):
             return None
         if o is None:
@@ -419,7 +448,7 @@ class UnitOrdersMixin:
         if not open_:
             return None
         active = [o for o in open_ if o.get("status") == "active" or O.retries_at_turn_start(o)]   # a retry issues too
-        out: dict = {"open": len(open_)}
+        out: dict = {}
         if active:
             refused = self._claim_turn(ts, "orders")
             if refused is not None:
@@ -440,5 +469,5 @@ class UnitOrdersMixin:
         ran = {r["id"] for r in out.get("rows") or []}
         out.setdefault("rows", [])
         out["rows"] += [O.row(o) for o in open_ if o.get("id") not in ran]
-        out["paused"] = sum(1 for r in out["rows"] if r.get("status") == "paused")
-        return out
+        # Counted once the orders have run (GitLab #181): one that completed or failed just now is closed.
+        return {**O.counts(out["rows"]), **out}

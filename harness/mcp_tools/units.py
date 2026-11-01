@@ -273,18 +273,16 @@ def move_unit(unit_id: int, x: int, y: int, then: str | None = None) -> str:
     then="fortify" | "sleep" | "alert" | "hold": hold once there -- this turn when it arrives with moves left,
     else the turn it arrives (#105: "go there and hold" is one order, and the unit does not block the finish)."""
     g = core.game()
-    r = g.move_unit(unit_id, x, y, then=then) if then else g.move_unit(unit_id, x, y)   # fakes keep the three-argument shape
-    return J(_took_back(g, unit_id, "move_unit", r))
+    # fakes keep the three-argument shape
+    return J(_took_back(g, unit_id, "move_unit",
+                        lambda: g.move_unit(unit_id, x, y, then=then) if then else g.move_unit(unit_id, x, y)))
 
 
-def _took_back(g, unit_id: int, tool: str, r: dict) -> dict:
-    """A direct command to a unit an active order owns pauses the order (#32): one owner at a time."""
-    note = getattr(g, "note_manual_order", None)
-    if isinstance(r, dict) and r.get("ok") and note is not None:
-        took = note(unit_id, tool)
-        if took:
-            r["order_replaced" if took.get("status") == "replaced" else "order_paused"] = took   # replaced: #143
-    return r
+def _took_back(g, unit_id: int, tool: str, command) -> dict:
+    """A direct command to a unit an order owns takes it from that order (#32), never from one the command itself
+    creates (#182): Game.direct_command holds the rule. A test double without it just runs the command."""
+    direct = getattr(g, "direct_command", None)
+    return direct(unit_id, tool, command) if direct is not None else command()
 
 
 @retired
@@ -313,4 +311,4 @@ def unit_mission(unit_id: int, mission: str, x: int = -1, y: int = -1, build: st
         # available_unit_actions lists builds by their BUILD_* type; take that name as given
         mission, build = "MISSION_BUILD", mission
     g = core.game()
-    return J(_took_back(g, unit_id, "unit_mission", g.unit_mission(unit_id, mission, x, y, build=(build or None))))
+    return J(_took_back(g, unit_id, "unit_mission", lambda: g.unit_mission(unit_id, mission, x, y, build=(build or None))))

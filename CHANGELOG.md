@@ -17,6 +17,20 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
 ## Unreleased
 
 ### Fixed
+- **A standing order that completes at the turn start is counted closed** (GitLab #181, three-seat hotseat, seat 0
+  Maya t26; a regression past #113). The finish that ended t25 said `orders: {open: 1, paused: 0}` over a single
+  row with `status: completed`: the turn-start window took `open` from the orders it was about to run, before the
+  quarry's order completed in that run, and gave no `closed` count (#113 had fixed the briefing's count only).
+  One count (`harness/orders.py` `counts`) now reads each returned row's status after the run -- `open` active +
+  paused, `closed` completed / failed / replaced / cancelled (only when there are any), `paused` -- for the
+  finish, the wait and the briefing alike.
+- **A remote build keeps the order it creates** (GitLab #182, three-seat hotseat, seat 1 Celts t18). MISSION_BUILD
+  on another plot became walk-then-build order 1, walked the Worker to (8,23), and the same reply paused order 1
+  as "given a direct order (unit_mission); that command owns it now", its note still placing the Worker at
+  (7,24). The one-owner rule lives in `Game.direct_command`: the order that held the unit before the command is
+  taken (paused, or replaced when it was paused), never one the command itself opened; a remote build replaces
+  the unit's open order instead of being refused by it. give_order's reply carries `at`, where the run left the
+  unit, and the remote build's note names that tile.
 - **A bare icon reads as its yield** (GitLab #103 follow-up from hotseat Maya t3, runtime v329). The engine writes
   some effects as icons alone -- God-King is "+1 to these yields: [ICON_CULTURE] , [ICON_PEACE] , [ICON_GOLD],
   [ICON_PRODUCTION], [ICON_RESEARCH]" -- and plain_text kept the icon's name, so it read "Culture, Peace, Gold,

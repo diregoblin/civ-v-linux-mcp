@@ -153,9 +153,13 @@ class UnitsMixin:
         if give is None:
             return {"ok": False, "err": f"the unit must stand on ({x},{y}) to build there: order(to='unit', action='move', "
                                         f"args={{x: {x}, y: {y}}}) first, then MISSION_BUILD with build alone"}
+        # A direct order takes the unit from an order that holds it (#32): the walk-then-build order replaces it
+        # (one order per unit) rather than being refused by it.
+        holding = getattr(self, "order_holding", None)
+        replace_id = holding(int(unit_id)) if holding is not None else None
         try:
             r = give(int(unit_id), [{"kind": "move", "x": x, "y": y}, {"kind": "build", "build": build}],
-                     purpose=f"build {build} at ({x},{y})")
+                     purpose=f"build {build} at ({x},{y})", replace_id=replace_id)
         except Exception as e:  # the order module's own refusal (an illegal destination, an unknown build)
             return {"ok": False, "err": f"the unit must stand on ({x},{y}) to build there, and the walk-then-build order "
                                         f"was refused: {e}", "x": pos.get("x"), "y": pos.get("y")}
@@ -163,9 +167,16 @@ class UnitsMixin:
             return {"ok": False, "err": f"the unit must stand on ({x},{y}) to build there, and the walk-then-build order "
                                         f"was refused: {(r or {}).get('err') if isinstance(r, dict) else r}",
                     "x": pos.get("x"), "y": pos.get("y")}
-        r["note"] = (f"the unit is at ({pos.get('x')},{pos.get('y')}): a notebook order walks it to ({x},{y}) and starts "
-                     f"{build} there, this turn as far as its moves reach and at each turn start after "
-                     "(notebook(action='orders') shows it; notebook(action='cancel_order') drops it)")
+        # The tile the order's run left the unit on, not the one it started from (GitLab #182: the note said (7,24)
+        # beside last.arrived at (8,23)).
+        at = r.get("at") if isinstance(r.get("at"), dict) else pos
+        if (at.get("x"), at.get("y")) == (x, y):
+            lead = (f"the unit walked to ({x},{y}): a notebook order starts {build} there, now when it has moves left, "
+                    "else at the next turn start")
+        else:
+            lead = (f"the unit is at ({at.get('x')},{at.get('y')}): a notebook order walks it to ({x},{y}) and starts "
+                    f"{build} there, this turn as far as its moves reach and at each turn start after")
+        r["note"] = lead + " (notebook(action='orders') shows it; notebook(action='cancel_order') drops it)"
         r["remote_build"] = {"build": build, "x": x, "y": y}
         return r
 

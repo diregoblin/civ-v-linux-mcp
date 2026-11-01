@@ -391,6 +391,9 @@ class FakeGame:
     def available_research(self):
         return RESEARCH
 
+    def direct_command(self, unit_id, tool, command):
+        return command()   # the one-owner rule (Game.direct_command) has no orders to take here
+
     def __getattr__(self, name):
         if name.startswith("_"):
             raise AttributeError(name)

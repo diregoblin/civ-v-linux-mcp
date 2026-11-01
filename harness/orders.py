@@ -402,15 +402,25 @@ def row(o: dict) -> dict:
     return out
 
 
+def counts(rows: list[dict]) -> dict:
+    """The counts over the rows an `orders` block returns, read from each row's status as it stands after the run:
+    `open` the active and paused ones, `closed` the rest (completed, failed, cancelled, replaced: shown once, as
+    what happened; only when there are any), `paused` the open ones waiting on an answer. GitLab #113 (Maya t150)
+    and #181 (hotseat Maya t26: the finish counted before running, so the order that completed in that very run
+    still read `open: 1`)."""
+    out = {"open": sum(1 for r in rows if r.get("status") in OPEN),
+           "closed": sum(1 for r in rows if r.get("status") not in OPEN),
+           "paused": sum(1 for r in rows if r.get("status") == "paused")}
+    if not out["closed"]:
+        del out["closed"]
+    return out
+
+
 def briefing_section(orders: list[dict], limit: int) -> dict:
     """The briefing's `orders`: paused ones first (they want an answer), then active."""
     rows = sorted((row(o) for o in orders), key=lambda r: (r.get("status") != "paused", r.get("id") or 0))
-    # GitLab #113 (Maya t150): `open: 1` over a single completed row -- the count is of the rows still open.
-    out = {"open": sum(1 for r in rows if r.get("status") in ("active", "paused")), "closed": sum(1 for r in rows if r.get("status") not in ("active", "paused")) or None,
-           "paused": sum(1 for r in rows if r.get("status") == "paused"),
+    out = {**counts(rows),
            "rows": [{k: r[k] for k in ("id", "unit", "status", "now", "state", "pause") if k in r} for r in rows[:max(1, limit)]]}
-    if out["closed"] is None:
-        del out["closed"]
     if len(rows) > limit:
         out["more"] = len(rows) - limit
         out["hint"] = "notebook(action='orders') lists every one"

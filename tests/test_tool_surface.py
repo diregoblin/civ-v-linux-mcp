@@ -279,6 +279,9 @@ class FakeGame:
     def _goody_popup_unit(self):
         return 7
 
+    def direct_command(self, unit_id, tool, command):
+        return command()   # the one-owner rule (Game.direct_command) has no orders to take here
+
     def __getattr__(self, name):
         if name.startswith("_"):
             raise AttributeError(name)
