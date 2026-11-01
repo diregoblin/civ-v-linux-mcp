@@ -1,4 +1,23 @@
-# Resume here -- 2026-10-30 (evening): main = 2.10.0 (runtime v328, 9 tools, 2039 tests; tagged 2026-10-30).
+# Resume here -- 2026-10-31 (night): main = 2.10.0 + milestones 2.11.0-2.13.0 unreleased (runtime v335, 9 tools, 2114 tests).
+**The thirteen issues of the 2026-10-30 three-seat hotseat (milestones 2.11.0, 2.12.0, 2.13.0) are fixed on main,
+unreleased**, each as one commit with a regression test and a GitLab note: #168 (9cc36ec, the notebook key ends in a
+per-game identity, old-key notebooks adopted once and quarantined), #174 + #172 (50675bf, the shared hotseat scratch
+trade table is read seat-aware), #175 (8b10ac9, a human seat is asked on the trade table: friendship as a DoF deal,
+war through SendChangeWar, denounce refused), #181 + #182 (90edcba, orders.counts after the run; direct_command
+never pauses the order it creates), #176 + #169 (6c7b76f, the `hold` block; the ruins successor named by the move),
+#180 + #177 (e9241f9, step_cost.lua ports CvUnitMovement::MovementCost; a city is the cell's ground letter), #179 +
+#178 + #171 (343af86, locked ideologies as names; belief rows carry their call; tests/test_playbook_examples.py checks
+every served example). CHANGELOG's Unreleased holds the entries; the trackers #167 / #173 stay open as the record.
+**Nothing of this was seen live** (no game ran tonight; the last live process was runtime v328). Next: a live
+session on the three-seat hotseat save (or the t237 Maya save) to read back, in this order: `H.game_key_facts`
+before and after a reload (GetStartingPlot stable; the live notebooks adopt once with orders paused); #172's deal
+sequence (0->2 unseen on seat 1, then 0->1, 1->2, overlapping offers); a DoF deal read on both seats and IsDoF
+after the accept; tactical `cost` against the moves an order actually spends (forest on hills, a river, a road, a
+ZOC step); `GetFortifyTurns` right after MISSION_FORTIFY; a ruins step's successor at the read-back. Then the release
+cut (2.11.0 or one 2.11.0 covering the three milestones: CHANGELOG, README row + test count, AGENT_INSTALL line 8,
+ROADMAP, this head), which closes the three milestones.
+
+# Previous -- 2026-10-30 (evening): main = 2.10.0 (runtime v328, 9 tools, 2039 tests; tagged 2026-10-30).
 **2.10.0 "Decisions explained, lean replies" is shipped**: the seven issues of milestone 19 in the planned order, each with
 a regression test and a GitLab note (CHANGELOG 2.10.0). #142 and #148 were done this evening and seen live on the t237
 Maya save (`Pacal_0237 maya-t237`, single/): a Great Musician spawned beside Palenque read `missing` rows for the Great
