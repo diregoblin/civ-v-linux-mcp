@@ -16,6 +16,19 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
 
 ## Unreleased
 
+## 2.13.1 -- README corrections (2026-10-31)
+
+- **The README says what the code does now.** Its claims were checked against the vocabulary, the CLI, the
+  scripts and the docs they name: the title spells Sid Meier's; the fair-play line on diplomacy says that between
+  human seats everything goes over the trade table (2.11.0); the notebook bullet names `notebook(action="assign")`
+  and the comparison read `state(what="compare")` instead of the 1.x names; the tactical bullet says an open step
+  carries its cost and the zone of control that ends it (2.13.0), and the honest-limits line no longer calls the
+  step cost unreadable (the engine's own preview still crashes the game; the cost is computed from its rules, and
+  nothing beyond one step is estimated); a standing order is never paused by the command that created it
+  (2.12.0); two sentences start with a capital; and the authorship section says the 2.11.0-2.13.0 fixes were
+  drafted by Claude Opus 5.5 subagents and reviewed, corrected and committed by Claude Fable 5.1, whose trailers
+  therefore name the reviewer. No code changed.
+
 ## 2.13.0 -- Reads before the order (2026-10-31)
 
 - **The policy read carries the ideologies' tenets only from their era on** (GitLab #179, runtime v335, three-seat

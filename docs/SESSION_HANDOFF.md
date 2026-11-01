@@ -1,4 +1,4 @@
-# Resume here -- 2026-10-31 (night): main = 2.13.0 (runtime v335, 9 tools, 2114 tests; tagged 2026-10-31, with v2.11.0 and v2.12.0 backfilled at 8b10ac9 / 6c7b76f).
+# Resume here -- 2026-10-31 (night): main = 2.13.1 (runtime v335, 9 tools, 2114 tests; tagged 2026-10-31; 2.13.1 is the README correction patch, with v2.11.0 and v2.12.0 backfilled at 8b10ac9 / 6c7b76f).
 **The thirteen issues of the 2026-10-30 three-seat hotseat (milestones 2.11.0, 2.12.0, 2.13.0) are fixed on main
 and released**, each as one commit with a regression test and a GitLab note: #168 (9cc36ec, the notebook key ends in a
 per-game identity, old-key notebooks adopted once and quarantined), #174 + #172 (50675bf, the shared hotseat scratch

@@ -271,7 +271,7 @@ orders counted after they run and a command never pausing the order it creates (
 ruins successor (6c7b76f, v333; tagged `v2.12.0` after the fact, 2094 tests); step_cost.lua porting the engine's
 movement rules and the city as the cell's ground (e9241f9, v334), locked ideologies as names, belief rows with their
 order, every served playbook example checked by a test (343af86, v335). Tagged `v2.13.0` 2026-10-31 (runtime v335,
-9 tools, 2114 tests). None of it seen live yet: docs/SESSION_HANDOFF.md lists the read-backs for the next session.
+9 tools, 2114 tests); `v2.13.1` the same night corrects the README's stale lines (no code). None of it seen live yet: docs/SESSION_HANDOFF.md lists the read-backs for the next session.
 
 ## A seat bound to its channel (fair play by mechanism)
 

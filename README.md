@@ -1,4 +1,4 @@
-# Agentic MCP tools for Sid Meiers Civilization 5: Brave New World
+# Agentic MCP tools for Sid Meier's Civilization V: Brave New World
 
 > **Give your agent a civilization. See what survives.**
 
@@ -25,7 +25,7 @@ the table and sees no more than you would.
 
 | Requirements | Current release | Ways to play |
 | --- | --- | --- |
-| Native Linux Steam build, Brave New World | **2.13.0** · Lua runtime **v335** | Solo · hotseat · LAN · multi-LLM |
+| Native Linux Steam build, Brave New World | **2.13.1** · Lua runtime **v335** | Solo · hotseat · LAN · multi-LLM |
 
 ## On this page
 
@@ -66,8 +66,8 @@ The agent sits in a human seat and gets a human's information, nothing more. Tha
   and look at, not a list of unknown tiles to plan over.
 - **Unmet civilizations do not exist** until the agent meets them. The AI's private plans stay private.
 - **Diplomacy goes through the game's own screens.** Deals, demands, peace terms, friendship, denouncement
-  and leader conversations are the same ones the AI offers you, with the AI's actual replies. Trades between
-  you and the agent work in hotseat and LAN.
+  and leader conversations are the same ones the AI offers you, with the AI's actual replies. Between human
+  seats (you and the agent, or two agents) everything goes over the trade table, as it does for you.
 - **A seat is bound to its channel.** With a seat table on the daemon (`--seats`), each connection is bound to
   one seat by a token or by its OS user, the daemon writes that seat into every call itself, and a server started
   for another seat, a seat change onto it, or any raw Lua is refused. Two agents in one hotseat see only their own
@@ -103,12 +103,13 @@ than on scrolling. That is what keeps a turn affordable and the game moving whil
   back, fortify) that runs itself at the start of each turn through the ordinary move tools. The moment
   anything unplanned happens it pauses and hands the unit back with a reason. It never attacks, declares war
   or ends the turn on its own.
-- **Assignments and a notebook that survive amnesia.** `assign` gives a unit or city a role, a target and a
-  done-when, and every briefing re-checks it against what the seat can see now. `remember` / `recall` keep
-  the plan, threats and promises beside the game. Both outlive a context reset, so a model that forgets
+- **Assignments and a notebook that survive amnesia.** `notebook(action="assign")` gives a unit or city a role, a
+  target and a done-when, and every briefing re-checks it against what the seat can see now. `remember` /
+  `recall` keep the plan, threats and promises beside the game. Both outlive a context reset, so a model that forgets
   everything mid-game picks its own plan back up.
-- **It looks before it leaps.** the tactical view (`state(what="unit", id, view="tactical")`) is a unit's six neighbours with what a move would do there
-  (attack, open, refused with why, enemy). `compare` lays out a few production, research or worker options
+- **It looks before it leaps.** The tactical view (`state(what="unit", id, view="tactical")`) is a unit's six
+  neighbours with what a move would do there (attack, open with what the step costs and whose zone of control
+  ends it, refused with why, enemy). `state(what="compare")` lays out a few production, research or worker options
   side by side with costs, turns and effects (a building already in the queue reads as queued, not refused).
   Neither picks for the agent.
 - **Batches and safe retries.** `batch(actions=[...])` runs a list of orders and stops at the first refusal. An `action_id`
@@ -168,7 +169,7 @@ than on scrolling. That is what keeps a turn affordable and the game moving whil
 - **The tactical view never guesses.** Adjacency and map wrap come from the engine. One step's cost and the
   zone of control that ends it follow the engine's movement rules on the plots as seen; no turns-to-reach,
   which the engine cannot give safely. Nothing fogged is called safe.
-- **`compare` keeps a tile's own gain apart from the empire's** (nothing until a city works it) and never
+- **A compare keeps a tile's own gain apart from the empire's** (nothing until a city works it) and never
   calls a trade destination safe under fog.
 - **A trade unit's second gate.** Past the slot count the engine asks whether some city of yours can start a
   new route of that kind now; when it cannot, the briefing, `compare` and a refused production order quote the
@@ -181,7 +182,7 @@ than on scrolling. That is what keeps a turn affordable and the game moving whil
   city lost, a settle site now too close to a city, or a target out of sight kept as last seen, never assumed
   gone. `notebook(action="amend")` and `notebook(action="close")` do the rest.
 - **What pauses a standing order.** A hostile in sight, damage, an enemy on the destination, a refused step,
-  no progress, or a direct command to that unit.
+  no progress, or a direct command to that unit (never the command that created it).
 - **What wakes `skip_quiet_turns`.** Combat of our own, a leader message that asks something, an empty city,
   a happiness drop out of the comfortable band (or five at once), a deal in its last turns (once), a new
   strategic-resource shortfall, or a barbarian camp or hostile unit beside a unit on its way somewhere. A
@@ -193,7 +194,7 @@ than on scrolling. That is what keeps a turn affordable and the game moving whil
 
 ## What a game looks like
 
-the agent plays through tool calls; you watch the game window. On its turn it checks what changed, inspects
+The agent plays through tool calls; you watch the game window. On its turn it checks what changed, inspects
 its cities and units, chooses actions the game permits, then ends the turn. In hotseat the window passes
 back to you and you take your turn as usual. Nine tools -- `turn`, `state`, `order`, `question`,
 `answer`, `notebook`, `batch`, `session`, `reference` -- and the loop is four lines:
@@ -279,7 +280,8 @@ the long version.
 - A blocker the engine raises without opening its chooser (the Maya Long Count, a stolen tech, a free Great
   Person, a dig) is asked and answered through `question()` / `answer()` since 2.2.0; anything still outside the
   nine tools makes the agent stop and ask you. `docs/GAPS.md` is the running audit.
-- Movement-cost previews and path overlays are not readable: the engine calls that back them crash the game.
+- The engine's movement-cost preview and path overlays crash the game when read, so one step's cost is computed
+  from the engine's movement rules instead, and nothing beyond one step (turns to reach) is estimated.
 - No hosted CI by choice; the suite runs locally before every push.
 
 ## Documentation
@@ -325,8 +327,10 @@ Issues and milestones live on GitLab: <https://gitlab.com/Tyler-Meador/civ-v-lin
 
 This project was written by Claude, Anthropic's AI model, working in Claude Code under the direction of
 Ty Meador, who owns the game, ran every live session and decided what the harness should and should not do.
-Claude Fable 5.1 wrote most of it, with Claude Opus 5, Claude Sonnet 5 and Claude Opus 5.5 on earlier
-commits; the `Co-Authored-By` trailers in the git history say which model wrote what. That covers the
+Claude Fable 5.1 wrote most of it, with Claude Opus 5, Claude Sonnet 5 and Claude Opus 5.5 on other
+commits; the `Co-Authored-By` trailers in the git history say which model committed what. The fixes of
+2.11.0 to 2.13.0 (2026-10-31) were drafted by Claude Opus 5.5 subagents and reviewed, corrected and committed
+by Claude Fable 5.1, so their trailers name the reviewer. That covers the
 reverse engineering of the FireTuner protocol and the game binary, the shim, the Lua runtime, the MCP
 server, the tests, the documentation and this README. Ty's
 contribution is the design brief, the live verification against the running game, the judgement calls
