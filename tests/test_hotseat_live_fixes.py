@@ -288,6 +288,18 @@ class DealsBetweenHumansTests(unittest.TestCase):
         assert(r.incoming_deal and r.incoming_deal.from==0 and r.incoming_deal.items==0, H.json(r.incoming_deal))
         """)
 
+    def test_the_todo_skips_a_table_between_two_other_seats(self):
+        """GitLab #172: seat 0's proposal to seat 2 stayed on the shared scratch and seat 1's todo named it."""
+        self.run_lua(self.DEAL + """
+        Players={[1]={IsTurnActive=function() return true end,GetCurrentResearch=function() return 1 end,
+          Cities=function() return function() end end,Units=function() return function() end end}}
+        Game={GetActivePlayer=function() return 1 end}
+        GameInfo={Units={}};GameDefines={MOVE_DENOMINATOR=60}
+        deal.GetToPlayer=function() return 2 end
+        local r=H.todo(1)
+        assert(r.incoming_deal==nil, 'not seat 1\\'s offer: ' .. H.json(r.incoming_deal))
+        """)
+
 
 if __name__ == "__main__":
     unittest.main()

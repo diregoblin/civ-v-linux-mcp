@@ -1,6 +1,6 @@
 -- Harness runtime injected into the InGame Lua state through the tuner.
 -- Everything lives under the global table H so re-injection is idempotent.
-local RUNTIME_VERSION = 330
+local RUNTIME_VERSION = 331
 if H and H.version == RUNTIME_VERSION then return true end  -- true: tells the installer to stop here
 local old = H
 -- _enum_names is intentionally NOT carried over from `old`: it is a pure cache derived from live game

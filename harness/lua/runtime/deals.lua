@@ -155,13 +155,33 @@ function H.pending_deal_from(pid)
   return nil
 end
 
+-- Whether the scratch deal is a table this seat has no part in. Every seat of a hotseat game shares one scratch
+-- deal, and a proposal one human seat sends another stays on it after the screen closes (tradelogic.lua OnPropose:
+-- DoProposeDeal, then SetHide with no ClearItems; the stock screen clears or reloads the table in
+-- OnOpenPlayerDealScreen before a seat sees it). GitLab #172 / #174: seat 0's proposal to seat 2 read on seat 1's
+-- turn as an offer from seat 0 -- a seat 1 had not even met -- that question() could not show, and the blind
+-- refuse finalized a 0 -> 1 deal that never was ("Your offer ... is no longer valid" on both seats). Foreign: a
+-- table between two other players, or a human's table to this seat whose proposal the engine no longer holds.
+function H.foreign_table(deal, pid)
+  local okf, from = pcall(function() return deal:GetFromPlayer() end)
+  local okt, to = pcall(function() return deal:GetToPlayer() end)
+  if not (okf and okt) or type(from) ~= "number" or type(to) ~= "number" or from < 0 or to < 0 then return false end
+  if from ~= pid and to ~= pid then return true end
+  if from == pid or not UI.ProposedDealExists then return false end
+  local okh, human = pcall(function() return Players[from]:IsHuman() end)
+  if not (okh and human) then return false end
+  local okp, held = pcall(function() return UI.ProposedDealExists(from, pid) end)
+  return okp and not held
+end
+
 function H.incoming_deal(pid)
   if not UI or not UI.GetScratchDeal then
     return { ok = true, items = {}, n = 0 }
   end
   local ok, deal = pcall(function() return UI.GetScratchDeal() end)
   if not ok or deal == nil then return { ok = true, items = {}, n = 0 } end
-  local items = H.deal_items(deal, pid)
+  -- Another pair's table reads as an empty one: nothing on it is this seat's, and its parties are not named.
+  local items = H.foreign_table(deal, pid) and {} or H.deal_items(deal, pid)
   local proposed_by
   if #items == 0 and UI.ProposedDealExists and UI.LoadProposedDeal then
     -- A proposal from another human seat is not on the scratch table until the deal screen loads it
@@ -178,8 +198,15 @@ function H.incoming_deal(pid)
       end
     end
   end
-  local from = deal.GetFromPlayer and deal:GetFromPlayer() or nil
-  local to = deal.GetToPlayer and deal:GetToPlayer() or nil
+  -- The parties are those of the items read, or of the proposal that loaded none (#161); an empty table's
+  -- leftover counterpart is nobody's offer.
+  local from, to
+  if #items > 0 then
+    from = deal.GetFromPlayer and deal:GetFromPlayer() or nil
+    to = deal.GetToPlayer and deal:GetToPlayer() or nil
+  elseif proposed_by ~= nil then
+    from, to = proposed_by, pid
+  end
   -- The engine may already have loaded another seat's proposal into the scratch (live t227: Bravo's
   -- table held Alpha's three items before anything asked for them); it is still their pending offer.
   if proposed_by == nil and #items > 0 and type(from) == "number" and from ~= pid and UI.ProposedDealExists then
@@ -266,7 +293,8 @@ function H.accept_deal(pid)
   -- without that the accepted items lingered as a fresh "incoming deal" and current_deals refused
   -- with "trade table is occupied" (live 2026-09-24 t226, peace between two humans).
   H.clear_scratch_deal()
-  return { ok = true, other = them }
+  -- The reply names what was signed and with whom, as the trade screen's accept does (GitLab #174).
+  return { ok = true, other = them, accepted_items = d.items }
 end
 
 function H.clear_scratch_deal()
@@ -290,7 +318,13 @@ function H.refuse_deal(pid)
   end
   UI.DoFinalizePlayerDeal(them, pid, false)
   H.clear_scratch_deal()
-  return { ok = true, other = them }
+  -- What was declined and from whom (GitLab #174: {ok, other} alone, after a refuse nobody could read).
+  local r = { ok = true, other = them, refused_items = d.items }
+  if (d.n or 0) == 0 then
+    r.unread = true
+    r.note = "player " .. tostring(them) .. "'s proposal was declined unseen: its items did not load onto the table"
+  end
+  return r
 end
 
 -- What can currently go on a deal with `other`, using only IsPossibleToTradeItem.

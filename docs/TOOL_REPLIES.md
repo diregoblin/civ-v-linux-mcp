@@ -293,7 +293,10 @@ screens and reports measured `effects` (gold, gold/turn, happiness, deal count, 
 import/export before vs after) -- so there is nothing to poll afterwards. With another human seat:
 builds the same table on the PvP deal screen and sends it (`pvp: true`, `pending: true`); that seat
 sees it as the status's pending_deal_from / question() on its turn and answers with answer(choice="accept") or
-"refuse", after which both seats' deals screens agree. Lump-sum gold is legal only under a
+"refuse", after which both seats' deals screens agree. No other seat sees it: the trade table every hotseat
+seat shares keeps a sent proposal on it, and a table this seat is no party to reads as empty. The answer's
+reply is {ok, other: the proposing seat, accepted_items / refused_items: the rows answered}; a refuse of a
+proposal whose items did not load carries `unread: true` and a note naming the seat. Lump-sum gold is legal only under a
 Declaration of Friendship with that civ (a Brave New World rule, human or AI alike; the trade catalog's
 `gold.note` says so); gold per turn is not gated (given income).
 items: [{"type":"RESOURCES","resource":"RESOURCE_DYE","from_us":true,"amount":1},

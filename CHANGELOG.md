@@ -40,6 +40,18 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
   say why), active assignments read needs_review until amended or closed, open orders are paused with kind
   `adopted`, the briefing baseline and the memo are dropped. A fresh game opens an empty notebook and leaves the
   old file alone; the first look writes the identity's file, so the decision is made once.
+- **A proposal shows only on the seat it is sent to** (GitLab #172, #174; three-seat hotseat 2026-10-30, t8 and
+  t25; runtime v331). Seat 0 proposed to seat 2 alone, yet seat 1 -- which had not met seat 0 -- got
+  todo.incoming_deal {from: 0, items: 2}; question() had nothing to show, the deals screen said the table was
+  occupied, and the blind refuse finalized a 0 -> 1 deal that never was, so seats 0 and 1 both read "offer ... is
+  no longer valid". Every hotseat seat shares one scratch deal, and a sent proposal stays on it (tradelogic.lua
+  OnPropose hides the screen without ClearItems; the stock screen clears or reloads the table before a seat sees
+  it); the todo row, the deals screen and refuse read whatever was there. `H.foreign_table` names a table this
+  seat is no party to, or a human's table whose proposal the engine no longer holds: incoming_deal reads it as
+  empty without naming its parties and loads this seat's own proposal over it, so the todo row, question(),
+  answer and the deals screen agree. #161's question() path was right; the deal seat 1 could not read was never
+  its own. The answer to a human deal echoes what it answered: {ok, other, accepted_items / refused_items}, and a
+  refuse of a proposal whose items did not load says `unread` and names the seat.
 
 ## 2.10.0 -- Decisions explained, lean replies (2026-10-30)
 

@@ -312,8 +312,9 @@ and sends once more.
 - Trade: `state(what="civ", id, view="trade_catalog")` shows what each side may put up and why a row is
   grey, with the deal calls to copy; `order(to="civ", id, action="negotiate", args={items})` asks the AI what
   would work without committing; `order(to="civ", id, action="propose_deal", args={items})` proposes and
-  reads the reply. To a human seat it sends the table, which that seat reads as `question()` and answers with
-  `answer(choice="accept")` or `"refuse"`. `action="demand"` is the leader screen's Demand button.
+  reads the reply. To a human seat it sends the table, which that seat -- and no other -- reads as `question()`
+  and answers with `answer(choice="accept")` or `"refuse"`; the answer names the other seat (`other`) and the
+  items (`accepted_items` / `refused_items`). `action="demand"` is the leader screen's Demand button.
 - War and peace: `order(to="civ", id, action="declare_war")`, `action="peace"` (with `items`),
   `action="denounce"`, `action="friendship"`; a declaration of friendship offered to you is
   `answer(choice="accept_friendship", args={"id": player})`. The AI rejects peace for about ten turns after a

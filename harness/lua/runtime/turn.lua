@@ -445,15 +445,15 @@ local function deal_item_summary(it)
 end
 
 -- Deals with turns_left <= within. The rows come from current_deals, which loads each deal into the shared
--- scratch table and empties it afterwards; that is only done when the table is already empty and no other
--- seat's proposal is waiting (incoming_deal would load it), so an offer or a draft is never touched. nil
+-- scratch table and empties it afterwards; that is only done when the table holds nothing of this seat's and no
+-- other seat's proposal is waiting (incoming_deal would load it), so an offer or a draft is never touched. nil
 -- means "not read this time", {} means none.
 function H.expiring_deals(pid, within)
   within = within or 3
   if not (UI and UI.GetScratchDeal and UI.GetNumCurrentDeals) then return nil end
   if H.pending_deal_from(pid) ~= nil then return nil end
-  local okd, deal = pcall(function() return UI.GetScratchDeal() end)
-  if not okd or deal == nil or #H.deal_items(deal, pid) > 0 then return nil end
+  -- Occupied as this seat reads it: another pair's leftover table is not in the way (GitLab #172).
+  if (H.incoming_deal(pid).n or 0) > 0 then return nil end
   local okn, n = pcall(function() return UI.GetNumCurrentDeals(pid) end)
   if not okn or type(n) ~= "number" then return nil end
   if n <= 0 then return {} end
