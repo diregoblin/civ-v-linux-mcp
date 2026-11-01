@@ -63,6 +63,7 @@ function H.available_policies(pid)
     out.ideologies = ideologies.rows
     out.ideology = ideologies.mine
     out.ideology_choice_open = ideologies.choice_open or nil
+    out.ideologies_note = ideologies.locked_note
   end
   return out
 end
@@ -73,6 +74,18 @@ end
 -- marked friend / denounced / at_war as the overview does; the early-adopter free tenets the popup prints
 -- (Game.GetNumFreePolicies(branch)); and, while the choice is still open, the tier-1 tenets with their text.
 -- `mine` is the seat's own ideology; `choice_open` says the engine is asking for one now.
+-- GitLab #179 (Celts t7, Ancient era): the tenets' text rode on every policy read of the game, a few thousand
+-- characters, while the ideologies could not be taken. The engine asks for one once three Factories stand or the
+-- Modern era begins (ENDTURN_BLOCKING_CHOOSE_IDEOLOGY), and every ideology branch names the era it opens in
+-- (EraPrereq, ERA_INDUSTRIAL). Before that era, with the choice not asked, a row is the ideology's name, `era`,
+-- `locked` and its followers; from that era on, while no ideology is mine, the early-adopter count and the tier-1
+-- tenets to plan by.
+local function era_reached(p, era_type)
+  if not era_type then return true end
+  local ok, reached = pcall(function() return p:GetCurrentEra() >= GameInfo.Eras[era_type].ID end)
+  return ok and reached == true
+end
+
 function H.ideologies(pid)
   local p = Players[pid]
   if not (p and p.GetLateGamePolicyTree) then return nil end
@@ -108,12 +121,16 @@ function H.ideologies(pid)
       end
     end
   end)
-  local rows = {}
+  local rows, locked = {}, false
   for _, b in ipairs(branches) do
     local row = { branch = b.Type, name = L(b.Description), followers = followers[b.ID] or {} }
     if mine == b.Type then row.mine = true end
-    pcall(function() row.free_tenets_on_adopt = Game.GetNumFreePolicies(b.ID) end)
-    if mine == nil then
+    if mine == nil and not choice_open and not era_reached(p, b.EraPrereq) then
+      row.era, row.locked, locked = b.EraPrereq, true, true
+    else
+      pcall(function() row.free_tenets_on_adopt = Game.GetNumFreePolicies(b.ID) end)
+    end
+    if mine == nil and not row.locked then
       local tenets = {}
       pcall(function()
         for pol in GameInfo.Policies{ PolicyBranchType = b.Type } do
@@ -124,5 +141,6 @@ function H.ideologies(pid)
     end
     rows[#rows + 1] = row
   end
-  return { rows = rows, mine = mine, choice_open = choice_open }
+  return { rows = rows, mine = mine, choice_open = choice_open,
+           locked_note = locked and "an ideology is chosen once 3 Factories stand or the Modern era begins; its tenets show from its era on" or nil }
 end

@@ -113,6 +113,45 @@ assert(by.POLICY_BRANCH_FREEDOM.tenets == nil, 'the tenets are the adoptable / l
 assert(#by.POLICY_BRANCH_ORDER.followers == 2, 'followers stay: the pressure the others put on me')
 """)
 
+    def test_before_the_ideology_era_the_rows_are_names_only(self):
+        """GitLab #179 (Celts t7, Ancient era): every tier-1 tenet's text rode on the policy read, a few thousand
+        characters, while the ideologies were locked to ERA_INDUSTRIAL and only Tradition could be taken."""
+        self.run_lua(WORLD)
+        self.run_lua(r"""
+BLOCKER = -1
+ERA = 0
+GameInfo.Eras = { ERA_ANCIENT = { ID = 0 }, ERA_INDUSTRIAL = { ID = 4 } }
+Players[0].GetCurrentEra = function() return ERA end
+Players[1].GetLateGamePolicyTree = function() return -1 end
+Players[2].GetLateGamePolicyTree = function() return -1 end
+local r = H.available_policies(0)
+assert(r.ideology_choice_open == nil and #r.ideologies == 3, H.json(r))
+for _, row in ipairs(r.ideologies) do
+  assert(row.tenets == nil and row.free_tenets_on_adopt == nil, 'no tenet text before the era: ' .. H.json(row))
+  assert(row.locked == true and row.era == 'ERA_INDUSTRIAL' and row.name and #row.followers == 0, H.json(row))
+end
+assert(r.ideologies_note:find('3 Factories', 1, true), H.json(r))
+assert(#H.json(r.ideologies) < 400, 'three short rows: ' .. #H.json(r.ideologies))
+-- the Industrial era reached, the choice not asked yet (fewer than three Factories): the tenets to plan by
+ERA = 4
+r = H.available_policies(0)
+assert(r.ideologies_note == nil and r.ideology_choice_open == nil, H.json(r))
+for _, row in ipairs(r.ideologies) do
+  assert(row.locked == nil and row.era == nil and row.tenets and row.free_tenets_on_adopt, H.json(row))
+end
+""")
+
+    def test_the_choice_asked_shows_the_tenets_whatever_the_era_reads(self):
+        """The engine's own question wins: ENDTURN_BLOCKING_CHOOSE_IDEOLOGY up means the choice is now (#145)."""
+        self.run_lua(WORLD)
+        self.run_lua(r"""
+GameInfo.Eras = { ERA_INDUSTRIAL = { ID = 4 } }
+Players[0].GetCurrentEra = function() return 0 end
+local r = H.available_policies(0)
+assert(r.ideology_choice_open == true and r.ideologies_note == nil, H.json(r))
+for _, row in ipairs(r.ideologies) do assert(row.tenets and not row.locked, H.json(row)) end
+""")
+
     def test_a_blocker_that_is_not_the_choice_leaves_the_choice_closed(self):
         self.run_lua(WORLD)
         self.run_lua(r"""

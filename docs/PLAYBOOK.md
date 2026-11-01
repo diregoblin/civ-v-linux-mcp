@@ -112,7 +112,7 @@ when you want to read the new turn before ordering anything on it.
    visible threats near your cities and units (compact rows; a threat your previous briefing listed is only
    marked `seen` unless it moved; `detail="full"` for whole rows), and the notes you wrote since your last
    briefing or finish. After a context reset call `turn(action="briefing", since="turn")`: it re-lists this
-   turn's events, your civ's own rules and every recent note. `turn(action="finish", briefing=true)` hands each
+   turn's events, your civ's own rules and every recent note. `turn(action="finish", args={"briefing": true})` hands each
    new turn back this way. For the full picture: `state(what="empire")` (gold, science, culture, happiness,
    era, your player id), `state(what="units")`, `state(what="cities")`, and the briefing's board for the
    map you can see. Prefer the briefing and `state(what="map", view="grid")` over large windows; keep
@@ -163,7 +163,7 @@ when you want to read the new turn before ordering anything on it.
 
 ### Letting quiet turns pass
 
-`turn(action="finish", skip_quiet_turns=N)` keeps ending turns, up to N more, while nothing needs you: no unit
+`turn(action="finish", args={"skip_quiet_turns": N})` keeps ending turns, up to N more, while nothing needs you: no unit
 awaiting orders, no empty city, no promotion, no popup, no blocker, no expiring city-state ally, deal or
 declaration of friendship, and nothing eventful in the digest (combat with a unit of yours in it -- a fight
 between other players is not, losses, cities changing hands, wars, leaders talking, wonders, great people,
@@ -172,7 +172,7 @@ Winning, a new era -- is not eventful (whether already closed or still listed fo
 that decides nothing for you: a city-state changing hands between two other players, a denouncement or
 declaration of friendship between others, a city-state's quest, "May Purchase With Faith", the end of your
 golden age. The same events about you -- "Influence over Yerevan has increased", "than you", "Denounced us!"
--- still wake). `wake_on=["Machinery", "Askia"]` adds your own words, matched against event kinds and
+-- still wake). `"wake_on": ["Machinery", "Askia"]` in the same `args` adds your own words, matched against event kinds and
 notification text, and always wakes. Cities keep building their queues and research continues; the harness
 never gives an order for you. The digests of the skipped turns are merged into the result, and
 `turns_skipped` / `woke_because` say what happened. Use it the way a human presses End Turn a few times while

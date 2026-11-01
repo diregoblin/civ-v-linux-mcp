@@ -250,10 +250,12 @@ class ChoiceRowsTests(unittest.TestCase):
         self.assertEqual(pol["adoptable"][0]["call"], A.act("choose_policy", policy="POLICY_LIBERTY"))
         self.assertEqual(pol["branches"][0]["call"], A.act("unlock_policy_branch", branch="POLICY_BRANCH_HONOR"))
         self.assertNotIn("call", pol["branches"][1])
-        self.assertEqual(A.belief_rows([{"belief": "BELIEF_GOD_OF_THE_SEA"}], "pantheon")[0]["call"],
+        def beliefs(kind):    # the runtime's shape (H.available_beliefs): the rows under `beliefs`
+            return {"ok": True, "kind": kind, "beliefs": [{"belief": "BELIEF_GOD_OF_THE_SEA"}]}
+        self.assertEqual(A.belief_rows(beliefs("pantheon"), "pantheon")["beliefs"][0]["call"],
                          A.act("found_pantheon", belief="BELIEF_GOD_OF_THE_SEA"))
-        self.assertEqual(A.belief_rows([{"belief": "BELIEF_X"}], "reformation")[0]["call"]["args"]["action"], "reformation")
-        self.assertNotIn("call", A.belief_rows([{"belief": "BELIEF_X"}], "founder")[0], "one of several arguments of found_religion")
+        self.assertEqual(A.belief_rows(beliefs("reformation"), "reformation")["beliefs"][0]["call"]["args"]["action"], "reformation")
+        self.assertNotIn("call", A.belief_rows(beliefs("founder"), "founder")["beliefs"][0], "one of several arguments of found_religion")
         routes = A.trade_route_rows([{"x": 3, "y": 4, "trade_connection_type": 0, "kind": "international"}, {"city_name": "none"}], 44)
         self.assertEqual(routes[0]["call"], A.act("establish_trade_route", unit_id=44, dest_x=3, dest_y=4, trade_type=0))
         self.assertNotIn("call", routes[1])

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from .. import gate
 from ..rows import act
 
 
@@ -61,17 +62,38 @@ def policy_rows(reply: Any) -> Any:
     return reply
 
 
-#: The belief kinds one belief answers by itself; a founder / follower / enhancer belief is one argument of
-#: found_religion / enhance_religion, whose rows the gate carries (gate.popup_rows).
+#: The belief kinds one belief answers by itself: each row carries its call.
 BELIEF_TOOLS = {"pantheon": "found_pantheon", "reformation": "add_reformation_belief"}
+#: The kinds whose belief is one argument of a religion order: no order takes one such belief alone, so the
+#: reply carries the rows of the popup(s) that take it -- the reads of the other kinds, then the order with what
+#: it leaves to choose (gate.popup_rows) -- and `call_note` names the argument the belief is.
+BELIEF_POPUPS = {"founder": ("BUTTONPOPUP_FOUND_RELIGION",), "bonus": ("BUTTONPOPUP_FOUND_RELIGION",),
+                 "follower": ("BUTTONPOPUP_FOUND_RELIGION", "BUTTONPOPUP_ENHANCE_RELIGION"),
+                 "enhancer": ("BUTTONPOPUP_ENHANCE_RELIGION",)}
+BELIEF_NOTES = {
+    "founder": "no order takes a founder belief alone: it is one of the `beliefs` of the founding order, beside a follower belief",
+    "bonus": "no order takes a bonus belief alone: it is one more of the `beliefs` of the founding order",
+    "follower": "no order takes a follower belief alone: it is one of the `beliefs` when founding, `belief4` when enhancing",
+    "enhancer": "no order takes an enhancer belief alone: it is `belief5` of the enhancing order, beside a follower `belief4`",
+}
 
 
-def belief_rows(rows: Any, kind: str) -> Any:
-    """available_beliefs(kind): each belief with its call when one belief is the whole answer."""
+def belief_rows(reply: Any, kind: str) -> Any:
+    """available_beliefs(kind) -- `{ok, kind, beliefs: [...]}` -- with its writes (GitLab #178: the rows came back
+    bare because the calls were put on the dict's rows only when the reply was a list, which it never is). A
+    pantheon or reformation belief row carries its `call`; for a founder / follower / enhancer / bonus belief the
+    reply carries the religion order's rows as `actions` and `call_note`. A refusal is returned untouched."""
+    if not _ok(reply):
+        return reply
     tool = BELIEF_TOOLS.get(kind)
-    if tool is None:
-        return rows
-    return _each(rows, lambda r: act(tool, belief=r["belief"]) if r.get("belief") else None)
+    if tool is not None:
+        _each(reply.get("beliefs"), lambda r: act(tool, belief=r["belief"]) if r.get("belief") else None)
+    elif kind in BELIEF_POPUPS:
+        this_read = {"what": "options", "view": "beliefs", "kind": kind}
+        reply["call_note"] = BELIEF_NOTES[kind]
+        reply["actions"] = [row for popup in BELIEF_POPUPS[kind] for row in gate.popup_rows(popup)
+                            if row["args"] != this_read]
+    return reply
 
 
 def trade_route_rows(rows: Any, unit_id: int) -> Any:

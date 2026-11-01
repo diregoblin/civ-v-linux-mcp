@@ -14,19 +14,19 @@ briefing; `notes_unshown` {count, more} counts the older ones, notebook(action="
 the latest eight back). Progress notifications go out every few seconds while waiting. If the turn will
 not end, ok=false and `end_turn` carries the refusal with the todo that blocks it: nothing is waited on.
 
-`actions=[{tool, args}, ...]` runs those orders first, exactly as `do` would: in order, stopping at the first
+`actions=[{tool, args}, ...]` runs those orders first, exactly as `batch(actions=[...])` would: in order, stopping at the first
 refusal, each order's own `action_id` replaying on a retry. The turn is ended only when every order was ok.
-`batch` is on the reply either way, with `do`'s shape (`done`, `results` [index, tool, result], `skipped`,
+`batch` is on the reply either way, with the batch reply's shape (`done`, `results` [index, tool, result], `skipped`,
 `hint`): on success beside the new turn, on a refusal beside the current `status` and `gate` with `ended:
 false` and a `hint` -- read the results, re-check the state, and call again with the orders still wanted (or
 none). An order that ran but left a blocker standing (a unit still needing orders) shows as a normal `end_turn`
 refusal after the batch. Waiting, loading, the turn's end and the batch itself are refused inside the
-list, as in `do`.
+list, as in `batch`.
 
 When the engine refuses the end because units still have movement (`end_turn.blocking` is
 `ENDTURN_BLOCKING_UNITS`, `end_turn.todo.units` lists them), the refusal also carries `end_turn.skip_actions`:
-one `{tool: "unit_mission", args: {unit_id, mission: "MISSION_SKIP"}}` per listed unit, ready to pass as the next
-call's `actions` -- and `end_turn.hint` says so. A plain `end_turn` refusal carries the same two keys at top
+one `{tool: "order", args: {to: "unit", action: "mission", id: N, args: {mission: "MISSION_SKIP"}}}` per listed
+unit, ready to pass as the next call's `actions` -- and `end_turn.hint` says so. A plain `end_turn` refusal carries the same two keys at top
 level. A unit keeps the turn open while it has moves left after its order (a one-plot move, an attack): it can
 still act, and the list is the set of decisions still open, not a list of units to skip. Skip the ones you mean
 to leave; give the rest a real order.
@@ -46,7 +46,7 @@ runs (`batch.skipped`, they were meant for the turn before). Returns early with 
 (an AI wants an answer: question() then answer(choice=<button> / "accept" / "refuse" / "leave"),
 then call this again) or tech_popup_pending=true (order(to="empire", action="research")), like turn(action="wait").
 
-skip_quiet_turns=N: keep ending turns, up to N more, while nothing needs me -- no unit awaiting orders, no
+`args={"skip_quiet_turns": N}`: keep ending turns, up to N more, while nothing needs me -- no unit awaiting orders, no
 empty city, no promotion, no popup, no blocker, no expiring city-state ally, and nothing eventful in the
 digest (combat, losses, cities changing hands, wars, leaders talking, wonders, great people, religion,
 espionage, congress, trade routes...). wake_on adds my own words to that list, matched case-insensitively
@@ -62,7 +62,7 @@ an explorer simply exploring lets the run continue, one beside a visible camp or
 `status.orders` (when I have conditional orders, see notebook(action="give_order")) says what each did at this turn start: rows
 with `did`, `status`, `state`, `pause`, counted after the orders ran: `open` (active + paused), `paused`, and
 `closed` (only when a row completed, failed or was replaced in this run); an order that paused, failed or completed wakes the run
-(order:<id>:<status>), one simply walking or building does not. With briefing=true the top-level `orders`
+(order:<id>:<status>), one simply walking or building does not. With `args={"briefing": true}` the top-level `orders`
 keeps only each order's id, unit, status and `did`; its state (now, pause, steps) is in briefing.orders.
 
 `digest.omitted` {count, turns [first, last], by_kind, hint} appears when more than 120 events had piled up
@@ -87,11 +87,11 @@ runs to its timeout on a finished game.
 One client owns the turn: the turn's first order claims it for that process, and another client of the
 same seat calling this gets ok=false with `turn_claim` (holder pid, how long it has held the turn, when
 the claim expires) instead of ending a turn out from under it. The claim lapses 180 s after the holder's
-latest order or when its process exits; force=true takes it over at once. A quiet-turn run claims each
+latest order or when its process exits; `args={"force": true}` takes it over at once. A quiet-turn run claims each
 turn it ends; if a second client acts on one first, the run stops and returns that turn
 (woke_because other_client_holds_turn).
 
-briefing=true hands the new turn back as `briefing` (see the briefing tool: decisions, changes, board,
+`args={"briefing": true}` hands the new turn back as `briefing` (see turn(action="briefing"): decisions, changes, board,
 threats, notes) in place of `status` and `digest`: the briefing counts and lists the same events from the
 game's log, and turn(action="briefing", since="turn", limit=50) repeats every one of them. When the turn comes back behind
 a gate (a discussion, a timeout, another seat) only the gate is briefed and `status` / `digest` stay as
@@ -111,7 +111,7 @@ cities with nothing to build, research unset, an incoming deal, a spy's stolen t
 blocker when it is none of those -- each with `actions`: the `{tool, args}` rows that clear it, exactly as
 `batch(actions=[...])` and `turn(action="finish", actions=[...])` take them -- the read first (run it as is), then the order;
 a row carrying `choose` names the arguments still to pick from that read's reply
-(`{"tool": "set_production", "args": {"city_id": 7}, "choose": ["item"]}`). A unit's one row is its
+(`{"tool": "order", "args": {"to": "city", "action": "produce", "id": 7}, "choose": ["item"]}`). A unit's one row is its
 `state(what="units", view="actions", detail="summary")` read, whose unit rows carry the unit's own orders. `decisions_total` counts
 them. `tools` (kind -> one sentence naming the tools) is the pre-2.0.0 form, kept one release beside the rows;
 `tools_note` says so.
@@ -327,7 +327,9 @@ Refuses -- without opening any screen -- an amount that is not a positive whole 
 that side has, and a city_id outside the catalog's cities; refuses -- without proposing -- if any item
 does not land on the table at the requested amount (e.g. they own none of that resource).
 ask_counter=true: on rejection also returns the AI's own counter-offer (`counter.items`) which can be
-passed straight back into the proposal. Duration of timed items is the game's deal length (30 turns).
+passed straight back into the proposal. Timed items (gold per turn, open borders, embassies, research
+agreements, resources) last the game's deal length, which the game speed sets (Game.GetDealDuration): the trade
+catalog's `duration` is the number for this game, and each proposed item's `duration` / `turns_left` repeat it.
 
 ## notebook(action="give_order")
 

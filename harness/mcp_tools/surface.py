@@ -219,9 +219,13 @@ def question() -> str:
         reply["beliefs"] = {}
         for kind in kinds:
             try:
-                reply["beliefs"][kind] = json.loads(_run_tool_here("available_beliefs", {"kind": kind}, renamed=False))
+                read = json.loads(_run_tool_here("available_beliefs", {"kind": kind}, renamed=False))
             except ValueError:
-                pass
+                continue
+            if isinstance(read, dict):    # the read's religion-order rows (#178) are the decision's `actions` above
+                read.pop("actions", None)
+                read.pop("call_note", None)
+            reply["beliefs"][kind] = read
         return J(reply)
     return J({"ok": True, "pending": False, "decisions": B.decisions(ts, None),
               "note": "nothing is asked; the decisions are the turn's todo (turn(action='briefing') has them in full)"})

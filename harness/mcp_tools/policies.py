@@ -16,9 +16,10 @@ def available_policies() -> str:
     in reference("policies")), which branches are unlocked / unlockable, culture vs next cost. Use before
     choose_policy / unlock_policy_branch. Each adoptable policy carries `call` (choose_policy), each unlockable branch its unlock_policy_branch (#47).
     `ideologies` is the ideology choice (#145): per ideology the met civs that follow it (friend / denounced_us /
-    we_denounced / at_war), free_tenets_on_adopt (the early-adopter bonus), and while no ideology is chosen its
-    tier-1 `tenets` with their text; `ideology` is mine, and while the engine asks for the choice each row carries
-    its choose_ideology `call`."""
+    we_denounced / at_war), and from the ideologies' era on, while no ideology is chosen, free_tenets_on_adopt
+    (the early-adopter bonus) and the tier-1 `tenets` with their text; before that era a row is `locked` with its
+    `era` (#179). `ideology` is mine, and while the engine asks for the choice each row carries its
+    choose_ideology `call`."""
     return J(core.game().available_policies())
 
 

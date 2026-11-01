@@ -17,6 +17,30 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
 ## Unreleased
 
 ### Fixed
+- **The policy read carries the ideologies' tenets only from their era on** (GitLab #179, runtime v335, three-seat
+  hotseat, Celts t7 / t18 and Maya t20). In the Ancient era `state(what="options", view="policies")` returned
+  every tier-1 tenet of Freedom, Order and Autocracy with its help text (3440 of 6413 characters at Maya t20) while
+  the three were locked to ERA_INDUSTRIAL. Before the ideologies' era, with the choice not asked, each row is the
+  name, `era`, `locked: true` and its followers, and `ideologies_note` says once when the choice comes (3 Factories
+  or the Modern era); from that era on, or as soon as ENDTURN_BLOCKING_CHOOSE_IDEOLOGY is up, the rows carry
+  `free_tenets_on_adopt` and the tier-1 `tenets` as #145 made them.
+- **Every pantheon belief row carries its order again, and the religion beliefs name the order that takes them**
+  (GitLab #178, Celts t6). `belief_rows` gave each row its `call` only when the read was a list, and the runtime has
+  answered `{ok, kind, beliefs: [...]}` since v226, so no pantheon or reformation row ever carried one; its test
+  fed a list. Each pantheon / reformation row now carries `order(to="empire", action="pantheon" / "reformation",
+  args={belief})`. No order takes a founder, follower, enhancer or bonus belief alone, and the reply says so:
+  `call_note` names the argument the belief is, and `actions` are the reads of the other kinds and the
+  `religion` / `enhance_religion` order with what it leaves to choose (the found / enhance popups' rows);
+  question()'s religion decision keeps those rows once, at its top.
+- **The playbook's examples are calls the server takes** (GitLab #171, Maya t8 / t26). The
+  `turn(action="finish")` reference taught `skip_actions` as `{tool: "unit_mission", ...}` and actions run "as
+  `do` would"; the propose_deal reference fixed the deal length at 30 turns where the game speed sets it (25 at
+  Quick). Both now read the current shape (`order(to="unit", action="mission", id, args={mission})`, `batch`) and
+  the trade catalog's `duration`. A new test (tests/test_playbook_examples.py) reads every `tool(...)` call and
+  `{tool, args}` row of docs/PLAYBOOK.md and docs/TOOL_REPLIES.md and holds it to the nine tools, their words and
+  the arguments of the call it resolves to; it found three more stale examples, now fixed: `briefing=true` and
+  `skip_quiet_turns=N` written as turn's own arguments (they ride under `args`), and a decision row written as
+  `set_production`.
 - **A tactical neighbour says what the step costs and which enemy's zone of control ends it** (GitLab #180,
   runtime v334, three-seat hotseat, seat 1 Celts t11 / t16). A Warrior with 2 moves read a plains neighbour as
   `move: open` with nothing else, stepped there and arrived with 0: a barbarian stood next to both plots, and

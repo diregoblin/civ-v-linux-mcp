@@ -314,7 +314,7 @@ Whoever plays the seat needs the turn loop and the blocker table. Both are in `d
 `section="turn_loop"` one topic, `section='turn(action="finish")'` every key of that reply. The short version, per turn:
 
 ```
-turn(action="finish", briefing=true)   (or turn(action="briefing", since="turn") after a context reset) -> read gate, then decisions
+turn(action="finish", args={"briefing": true}) (or turn(action="briefing", since="turn") after a context reset) -> read gate, then decisions
 -> act (state(what="units", view="actions") / state(what="city", id, view="production") / state(what="options", view="research") before each order; batch(actions) for many)
 -> notebook(action="remember") what future-you needs, notebook(action="assign" / "give_order") for plans -> turn(action="finish") (once; it quick-saves first)
 ```
