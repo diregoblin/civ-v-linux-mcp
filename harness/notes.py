@@ -13,10 +13,9 @@ and the structured `assignments` (harness/assignments.py): role, purpose, finger
 completion condition, review triggers and status, beside the prose notes and independent of them. The conditional
 unit `orders` (harness/orders.py: a unit's steps, the current one, its pause reason and last result) live there too.
 
-A key can change form between releases (runtime v285 fixed the map part of the key: `Assets_Maps_pangaea` became
-`pangaea`, and every notebook written before 2026-10-25 sat under the old form). `Notebook.adopt(legacy_key)`
-renames such a file to the current key once, when the current key has no file yet; the caller that builds the
-key (harness/game_parts/notebook.py) knows the old form and passes it.
+The key names the game by its identity and the seat (harness/notebook_identity.py, GitLab #168): a notebook
+written under an earlier form of the key is taken over there, once, quarantined (`adopted` notes and assignments,
+paused orders), and `Notebook.create` writes the identity's first file either way.
 """
 from __future__ import annotations
 
@@ -24,6 +23,11 @@ import json
 import os
 import re
 from pathlib import Path
+
+#: What an adopted record says about itself (a note row's `adopted`, an assignment's review reason, an order's
+#: pause): taken over from the seat's label-keyed notebook by harness/notebook_identity.py (GitLab #168).
+ADOPTED = ("adopted from a notebook written before this game had its own key (GitLab #168): it may be another "
+           "game's, or this one's from before the upgrade")
 
 
 MAX_NOTES = 200
@@ -53,32 +57,15 @@ class Notebook:
         self.key = safe_key(f"{game_key}-seat{seat}")
         self.path = notes_dir() / f"{self.key}.json"
 
-    def adopt(self, legacy_key: str | None) -> bool:
-        """Rename the notebook written under an earlier form of this key to the current one. Only when this key
-        has no file yet: two files are never merged (the newer key wins, the legacy file is left as it is)."""
-        if not legacy_key:
-            return False
-        old = notes_dir() / f"{safe_key(legacy_key)}.json"
-        if self.path.exists() or not old.exists():
-            return False
-        os.replace(old, self.path)
-        return True
+    def exists(self) -> bool:
+        return self.path.exists()
 
-    def adopt_matching(self, pattern: str) -> bool:
-        """`adopt` for a key whose one unknown part is a `*`: the notebook of a Random-map game was keyed by the
-        script the engine picked until runtime v289 (GitLab #119) and the key says `random` now. The newest file
-        matching the pattern is renamed, when this key has no file yet; nothing is merged."""
-        if not pattern or "*" not in pattern:
-            return False
+    def create(self, data: dict | None = None) -> None:
+        """Write this notebook's first file: `data` (a notebook taken over from an earlier key,
+        harness/notebook_identity.py) or an empty one. Never over a file that is already there."""
         if self.path.exists():
-            return False
-        glob = "*".join(safe_key(part) if part else "" for part in pattern.split("*"))
-        found = [p for p in notes_dir().glob(f"{glob}.json") if p != self.path]
-        if not found:
-            return False
-        newest = max(found, key=lambda p: p.stat().st_mtime)
-        os.replace(newest, self.path)
-        return True
+            return
+        self._save(data if isinstance(data, dict) and isinstance(data.get("notes"), list) else {"next_id": 1, "notes": []})
 
     # ------------------------------------------------------------ io
     def _load(self) -> dict:
@@ -135,6 +122,7 @@ class Notebook:
                 data["rev"] += 1
                 n.update({"text": text, "turn": turn, "tag": tag or stored_tag, "rev": data["rev"]})
                 n.pop("units", None)
+                n.pop("adopted", None)   # rewritten by this seat: its own now (#168)
                 if units:
                     n["units"] = units
                 self._save(data)
@@ -173,7 +161,17 @@ class Notebook:
                                      "note": f"{later} of these notes were written on turns later than turn {turn} (a save was "
                                              "loaded): they describe a timeline this game has not reached and are listed last; "
                                              "trust the board, not those notes"}
+        adopted = self.adopted_line(notes)
+        if adopted:
+            out["adopted"] = adopted
         return out
+
+    @staticmethod
+    def adopted_line(rows: list[dict]) -> str | None:
+        """What a reply says beside notes marked `adopted` (GitLab #168), None without any."""
+        n = sum(1 for r in rows if isinstance(r, dict) and r.get("adopted"))
+        return (f"{n} of these notes are marked adopted: {ADOPTED}; trust the board, then rewrite (replace_id) or "
+                "forget each one") if n else None
 
     def forget(self, note_id: int) -> dict:
         data = self._load()
@@ -237,6 +235,9 @@ class Notebook:
         out: dict = {}
         if h["notes"]:
             out["notes"] = h["notes"]
+        adopted = self.adopted_line(h["notes"])
+        if adopted:
+            out["notes_adopted"] = adopted
         if h["later"]:
             out["notes_later_timeline"] = (f"{h['later']} of these notes were written on turns later than turn {turn} "
                                            "(a save was loaded): the plan and the units they describe are a timeline "
@@ -373,6 +374,7 @@ class Notebook:
             return out
         previous = {k: a.get(k) for k in changes}
         a.update(changes)
+        a.pop("adopted", None)   # amended or closed by this seat: its own now (#168)
         a["updated_turn"] = turn
         if close:
             a["status"], a["closed_turn"] = close, turn

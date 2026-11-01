@@ -790,7 +790,28 @@ function H.city_count(pid) return Players[pid]:GetNumCities() end
 function H.unit_count(pid) return Players[pid]:GetNumUnits() end
 function H.free_great_people(pid) return Players[pid]:GetNumFreeGreatPeople() end
 
--- What names a game in the notebook (harness/game_parts/notebook.py game_key): leader, civ, map, capital.
+-- The game's identity for the notebook key (harness/notebook_identity.py, GitLab #168): facts fixed when the map
+-- is made and kept in the save -- the seat's own starting plot, the civilization in every major slot and the
+-- city-state in every minor slot. A reload reads the same string; two games set up alike start apart.
+local function game_identity(pid)
+  local plot = Players[pid]:GetStartingPlot()
+  if not plot then return "" end
+  local majors, minors = {}, {}
+  for i = 0, GameDefines.MAX_CIV_PLAYERS - 1 do
+    local q = Players[i]
+    if q and q:IsEverAlive() then
+      if q:IsMinorCiv() then
+        minors[#minors + 1] = i .. ":" .. tostring(q:GetMinorCivType())
+      else
+        majors[#majors + 1] = i .. ":" .. tostring(q:GetCivilizationType())
+      end
+    end
+  end
+  return plot:GetX() .. "," .. plot:GetY() .. "|" .. table.concat(majors, ",") .. "|" .. table.concat(minors, ",")
+end
+
+-- What names a game in the notebook (harness/game_parts/notebook.py game_key): leader, civ, map, the identity;
+-- the capital and its founding turn name the key written before #168, which a game under way adopts once.
 function H.game_key_facts(pid)
   local p = Players[pid]
   local cap = p:GetCapitalCity()
@@ -801,5 +822,6 @@ function H.game_key_facts(pid)
   return { leader = tostring(p:GetLeaderType()), civ = tostring(p:GetCivilizationType()),
            map = random and "random" or (tostring(ms):match("([^/\\]+)%.lua$") or tostring(ms)),
            cap = cap and cap:GetName() or "", founded = cap and cap:GetGameTurnFounded() or -1,
-           name = (PreGame and PreGame.GetGameName and PreGame.GetGameName()) or "", start = Game.GetStartTurn() }
+           name = (PreGame and PreGame.GetGameName and PreGame.GetGameName()) or "", start = Game.GetStartTurn(),
+           turn = Game.GetGameTurn(), identity = game_identity(pid) }
 end

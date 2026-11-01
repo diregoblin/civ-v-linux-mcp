@@ -189,9 +189,10 @@ Status: **shipped; checked live read-only** (runtime v224 `H.assignment_facts`, 
 
 - Identity: a unit is (id, type, `GetGameTurnCreated`), a city (id, x, y, `GetGameTurnFounded`), fingerprinted
   when assigned. The same id reading back as another type or creation turn is the assigned entity gone, never
-  followed (live Venice t42: Warrior 16385 against a SCOUT/t7 fingerprint). The notebook file is already per
-  game key and seat, so a new game or the other seat never sees an assignment (live: seat 1's server answered
-  "no assignment 1" with an empty id list).
+  followed (live Venice t42: Warrior 16385 against a SCOUT/t7 fingerprint). The notebook file is per game
+  and seat, so the other seat never sees an assignment (live: seat 1's server answered "no assignment 1" with an
+  empty id list). A new game did, until the key named the game by its identity rather than by leader, civ, map and
+  capital (GitLab #168: a fresh Maya game's Warrior 16385 matched the previous Maya game's fingerprint exactly).
 - An upgrade gives the unit a new id on the same plot. A missing unit's facts list my units on its last plot and
   mark the ones `Unit_ClassUpgrades` says it upgrades to (`H.is_upgrade_of`; live WARRIOR -> SWORDSMAN true,
   -> SPEARMAN false in this BNW database). The reason line names it; the model amends. Nothing is re-pointed

@@ -141,23 +141,17 @@ class NotebookTests(unittest.TestCase):
         nb.remember("fresh", turn=3)
         self.assertEqual(json.loads(nb.path.read_text())["notes"][0]["text"], "fresh")
 
-    def test_adopt_renames_a_legacy_key_once_and_never_over_a_living_file(self):
-        """The key's map part changed form at runtime v285 (`Assets_Maps_pangaea` -> `pangaea`): the first
-        open under the new key adopts the old file; a file already under the new key is never overwritten."""
-        legacy = Notebook("L36-C36-Assets_Maps_pangaea-Assur-t0-s0", 0)
-        legacy.remember("the old plan", turn=93)
-        nb = Notebook("L36-C36-pangaea-Assur-t0-s0", 0)
-        self.assertTrue(nb.adopt("L36-C36-Assets_Maps_pangaea-Assur-t0-s0-seat0"))
-        self.assertFalse(legacy.path.exists())
+    def test_create_writes_the_first_file_and_never_over_a_living_one(self):
+        nb = Notebook("L36-C36-pangaea-s0-g0123456789", 0)
+        self.assertFalse(nb.exists())
+        nb.create({"next_id": 2, "notes": [{"id": 1, "turn": 93, "text": "the old plan"}]})
         self.assertEqual([n["text"] for n in nb.recall()["notes"]], ["the old plan"])
-        self.assertFalse(nb.adopt("L36-C36-Assets_Maps_pangaea-Assur-t0-s0-seat0"), "nothing left to adopt")
-        other = Notebook("L36-C36-Assets_Maps_pangaea-Assur-t0-s0", 0)
-        other.remember("written under the old key after the move", turn=94)
-        nb.remember("the new plan", turn=240)
-        self.assertFalse(nb.adopt("L36-C36-Assets_Maps_pangaea-Assur-t0-s0-seat0"), "the living file wins")
-        self.assertEqual([n["text"] for n in nb.recall()["notes"]], ["the old plan", "the new plan"])
-        self.assertTrue(other.path.exists())
-        self.assertFalse(nb.adopt(None))
+        nb.create(None)
+        self.assertEqual(nb.recall()["count"], 1, "the living file wins")
+        empty = Notebook("another", 0)
+        empty.create()
+        self.assertTrue(empty.exists())
+        self.assertEqual(empty.recall()["count"], 0)
 
     def test_keys_are_filesystem_safe_and_dir_follows_xdg(self):
         self.assertEqual(safe_key("Assets\\Maps/continents.lua game/1"), "Assets_Maps_continents.lua_game_1")

@@ -27,6 +27,19 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
 - **A move refused as unrevealed notices swapped axes** (GitLab #150 F4, hotseat Spain t4). When the target read
   with x and y swapped is a revealed plot, the refusal carries `swapped` ({x, y}) and its hint says so, before
   the fog is blamed.
+- **A notebook belongs to one game** (GitLab #168, fresh three-seat hotseat, seat 0 Maya, 2026-10-30; runtime
+  v330). The key was leader, civ, map, capital and founding turn, so a new Maya game that founded Palenque on turn 0
+  opened the previous Maya game's notebook: its notes, a Tikal garrison on Warrior 16385 (same id, type and
+  creation turn), a turn-31 briefing baseline, and a standing order on Worker 40960 that ran on turn 1. The key
+  now ends in the game's identity (`harness/notebook_identity.py`): a digest of the seat's own starting plot and
+  the civilization / city-state in every slot, read by `H.game_key_facts` -- fixed when the map is made, kept in
+  the save, different between two games set up alike (the engine has no game id; the debug menu's map and sync
+  seeds were never seen to survive a reload). It does not change at the founding, so #159's before-capital
+  adoption is gone. A notebook under the old label key is adopted once, by a game past its start turn (a game
+  the harness plays is first seen on its start turn), and quarantined: notes carry `adopted` (`notes_adopted` / recall's `adopted`
+  say why), active assignments read needs_review until amended or closed, open orders are paused with kind
+  `adopted`, the briefing baseline and the memo are dropped. A fresh game opens an empty notebook and leaves the
+  old file alone; the first look writes the identity's file, so the decision is made once.
 
 ## 2.10.0 -- Decisions explained, lean replies (2026-10-30)
 

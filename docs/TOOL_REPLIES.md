@@ -137,13 +137,16 @@ barbarian `camps` within 4 plots of a city. `civ_rules`: my leader's trait text 
 cities; ...), included when there is no comparable baseline or since="turn".
 `notes`: my notebook entries written since my last briefing or finish (notes="new"), with
 `notes_unshown` {count, more} for the rest -- notebook(action="recall") has every note; notes="all" is the latest `limit`
-of them; the default "auto" is "all" with since="turn" and "new" otherwise. `assignments` (only when I have active ones; see assign):
+of them; the default "auto" is "all" with since="turn" and "new" otherwise. A note marked `adopted` (`notes_adopted` says
+why) came from the notebook this seat kept before the game had its own key (GitLab #168): trust the board, then rewrite or
+forget it. `assignments` (only when I have active ones; see assign):
 {active, by_state, rows} -- condition_met and needs_review first, each with purpose, state, reasons or
 evidence, its units / cities as they are now and the target as observed; a unit_orders decision whose unit
 is assigned carries `assignment` {id, role}. One more game read when there are any.
 `orders` (only when I have open conditional orders; see notebook(action="give_order")): {open, paused, rows} -- paused first, each
 with its unit, `now` (the current step), `state` and `pause` (kind, reason, hint); a unit_orders decision whose
-unit has one carries `order` {id, status, reason}. Read from the notebook: no game read.
+unit has one carries `order` {id, status, reason}. Read from the notebook: no game read. An assignment or order taken
+over from that older notebook reads needs_review / paused with kind `adopted` until I amend, close, resume or cancel it.
 Size: every list except `decisions` stops at `limit` (default 8, max 50) with `omitted` and `more` naming the
 tool that shows the rest. since="turn" lists every event after my previous turn ended (use it after a
 context reset, or with a larger limit to see events a short briefing left out); the default lists those

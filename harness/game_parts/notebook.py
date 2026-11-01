@@ -1,38 +1,8 @@
 """The notebook: notes, the briefing and assignments (harness/notes.py, briefing.py, assignments.py hold the logic)."""
 from __future__ import annotations
 
+from ..notebook_identity import game_keys, open_notebook
 from .support import plain_text
-
-
-#: What the map part of every key written before runtime v285 began with: the inline snippet's pattern lost
-#: its backslash in transit, so the map was the script's whole path (`Assets\\Maps\\pangaea.lua` ->
-#: `Assets_Maps_pangaea`); the runtime file ships the pattern intact and the key says `pangaea`.
-LEGACY_MAP_PREFIX = "Assets_Maps_"
-
-
-def game_keys(info: dict) -> dict:
-    """`{key, legacy}` from the runtime's facts: game name, leader, civ, map script, capital and the turn it was
-    founded, the start turn -- every save of one game shares the key and no other game does (well enough).
-    `legacy` is the key's pre-v285 form (None when the map part already has it or is empty). A Random-map game
-    says `random` where the script's name stood before runtime v289 (that name was the leak of GitLab #119):
-    `pattern` is then the key with the map part a wildcard, for adopting a notebook written under the old key."""
-    def build(map_part: str, cap: str | None = None, founded=None) -> str:
-        cap = str(info.get("cap") or "") if cap is None else cap
-        founded = info.get("founded") if founded is None else founded
-        parts = [str(info.get("name") or ""), f"L{info.get('leader')}", f"C{info.get('civ')}", map_part,
-                 cap, f"t{founded}", f"s{info.get('start')}"]
-        return "-".join(x for x in parts if x)
-    m = str(info.get("map") or "")
-    legacy = build(LEGACY_MAP_PREFIX + m) if m and m != "random" and not m.startswith(LEGACY_MAP_PREFIX) else None
-    out = {"key": build(m), "legacy": legacy, "settled": bool(info.get("cap"))}
-    if m == "random":
-        out["pattern"] = build("*")
-    if out["settled"]:
-        # The key a seat had before its capital existed (GitLab #159: a t0 plan remembered before the Settler
-        # founded Palenque sat under `...-continents-t-1-s0`, and the key gained `Palenque-t0` a call later; the
-        # recovered server read an empty notebook). The notebook adopts that file once the capital names the key.
-        out["before_capital"] = build(m, cap="", founded=-1)
-    return out
 
 
 class NotebookMixin:
@@ -42,32 +12,30 @@ class NotebookMixin:
 
     # ------------------------------------------------------------ notebook
     def game_key(self) -> str:
-        """A name for this game that every save of it shares and no other game does (well enough): leader,
-        civ, map script, the capital and the turn it was founded. Cached per seat (`_game_keys`): the key is
-        built from the seat's own leader and capital, so a server moved by set_seat onto the other hotseat
-        seat must not keep the first seat's key -- live t173 (2026-10-02) a session server that started on
-        Mongolia and was moved to Venice read an empty notebook under `...-Karakorum-...-seat0` while Venice's
-        35 notes sat under `...-Venice-...-seat0`. The cache is dropped when a game is loaded (wait_ingame).
-        `_game_key` set from outside is a fixed key (tests, simulations)."""
+        """A name for this game that every save of it shares and no other game does: leader, civ, map script, start
+        turn and the game's identity (harness/notebook_identity.py, GitLab #168). Cached per seat (`_game_keys`):
+        the identity is the seat's own starting plot, so a server moved by set_seat onto the other hotseat seat
+        must not keep the first seat's key -- live t173 (2026-10-02) a session server that started on Mongolia
+        and was moved to Venice read an empty notebook under Mongolia's key while Venice's 35 notes sat under
+        hers. The cache is dropped when a game is loaded (wait_ingame). `_game_key` set from outside is a fixed
+        key (tests, simulations)."""
         fixed = getattr(self, "_game_key", None)
         if fixed:
             return fixed
         return self._keys()["key"]
 
-    def legacy_game_key(self) -> str | None:
-        """The form this game's key had before runtime v285 (LEGACY_MAP_PREFIX), None for a fixed key."""
-        return None if getattr(self, "_game_key", None) else self._keys()["legacy"]
-
     def _keys(self) -> dict:
-        """The seat's keys, cached once the seat has a capital: before that the key changes at the founding
-        (#159), so it is read again until it does and the writer moves to the capital's key by itself."""
+        """The seat's keys, cached once the read carried the identity (read again until it does)."""
         keys = getattr(self, "_game_keys", None)
         if not isinstance(keys, dict):
             keys = self._game_keys = {}
-        if not (keys.get(self.seat) or {}).get("settled"):
-            info = self.q(self.h("game_key_facts"))
-            keys[self.seat] = game_keys(info if isinstance(info, dict) else {})
+        if not (keys.get(self.seat) or {}).get("identified"):
+            keys[self.seat] = game_keys(self._key_facts())
         return keys[self.seat]
+
+    def _key_facts(self) -> dict:
+        info = self.q(self.h("game_key_facts"))
+        return info if isinstance(info, dict) else {}
 
     def note_unit_refs(self, text: str) -> list[dict]:
         """The units `text` names by id, with their type now (one units read; never raises): stored on the note so
@@ -90,15 +58,16 @@ class NotebookMixin:
             return notes
 
     def notebook(self):
+        """This game's and seat's notebook. The first look at an identity's notebook decides, once, whether the
+        seat's notebook from before #168 is this game's (harness/notebook_identity.py open_notebook), on a fresh
+        read of the turn."""
         from ..notes import Notebook
         nb = Notebook(self.game_key(), self.seat)
-        legacy = self.legacy_game_key()
-        nb.adopt(f"{legacy}-seat{self.seat}" if legacy else None)
-        keys = {} if getattr(self, "_game_key", None) else self._keys()
-        if keys.get("before_capital"):
-            nb.adopt(f"{keys['before_capital']}-seat{self.seat}")   # notes taken before the capital was founded (#159)
-        if keys.get("pattern"):
-            nb.adopt_matching(f"{keys['pattern']}-seat{self.seat}")   # a Random-map game keyed by its script before v289
+        if not getattr(self, "_game_key", None) and not nb.exists():
+            info = self._key_facts()
+            keys = game_keys(info)
+            if keys["identified"]:
+                open_notebook(nb, keys, self.seat, info.get("turn"), info.get("start"))
         return nb
 
     # ------------------------------------------------------------ the server's own memory (#144)

@@ -24,6 +24,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import hexgrid
+from .notes import ADOPTED
 
 ROLE_MAX = 40
 PURPOSE_MAX = 500
@@ -441,6 +442,8 @@ def reconcile(a: dict, facts: dict, turn: int | None, seat: int | None) -> tuple
             if isinstance(u.get("hp"), int) and isinstance(u.get("max_hp"), int) and u["max_hp"] > 0 \
                     and u["hp"] * 100 < review["hp_below"] * u["max_hp"]:
                 reasons.append(f"{u.get('type')} {u['id']} at {u['hp']}/{u['max_hp']} hp, below {review['hp_below']}%")
+    if a.get("adopted"):
+        reasons.append(f"{ADOPTED}: notebook(action='amend') it to keep it, or close it")
     evidence = _done(a, facts, units_now, seat)
     state = "condition_met" if evidence else ("needs_review" if reasons else "on_track")
     row: dict = {"id": a["id"], "role": a.get("role"), "purpose": a.get("purpose"), "state": state,

@@ -537,8 +537,9 @@ class LuaRuntimeTests(unittest.TestCase):
                     IsRandomMapScript = function() return random end, GetGameName = function() return "" end }
         Game.GetStartTurn = function() return 0 end
         Players = { [0] = { GetLeaderType = function() return 31 end, GetCivilizationType = function() return 33 end,
-                            GetCapitalCity = function() return nil end } }
+                            GetCapitalCity = function() return nil end, GetStartingPlot = function() return nil end } }
         assert(H.game_key_facts(0).map == 'Fractal', H.json(H.game_key_facts(0)))
+        assert(H.game_key_facts(0).identity == '', 'no starting plot: no identity (#168)')
         random = true
         assert(H.game_key_facts(0).map == 'random', H.json(H.game_key_facts(0)))
         PreGame.IsRandomMapScript = nil
