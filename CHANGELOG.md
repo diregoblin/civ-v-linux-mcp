@@ -16,7 +16,8 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
 
 ## Unreleased
 
-### Fixed
+## 2.13.0 -- Reads before the order (2026-10-31)
+
 - **The policy read carries the ideologies' tenets only from their era on** (GitLab #179, runtime v335, three-seat
   hotseat, Celts t7 / t18 and Maya t20). In the Ancient era `state(what="options", view="policies")` returned
   every tier-1 tenet of Freedom, Order and Autocracy with its help text (3440 of 6413 characters at Maya t20) while
@@ -62,6 +63,10 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
   Edinburgh at distance 0. A city in sight is now the cell's ground letter and its units the occupant: `C@` this
   unit in a city, `Cu` / `Co` a garrison, `CX` an enemy city, `C ` an empty one; a fogged city stays remembered
   terrain plus `?` (it is in `cities`). The legend (docs/TOOL_REPLIES.md) and the one-line key say so.
+## 2.12.0 -- Orders report what they did (2026-10-31)
+
+Tagged after the fact at 6c7b76f (runtime v333, 2094 tests), the commit that closed the milestone, when 2.13.0 was cut; the package version in that tree still reads 2.10.0.
+
 - **A hold order says what the unit is doing, and Wake is a row** (GitLab #176, runtime v333, three-seat hotseat,
   seat 1 Celts t7 / t12 / t24). MISSION_FORTIFY on a Warrior that had moved answered `activity_name:
   SLEEP_OR_FORTIFY` with its move left, units() read `SLEEP`, `fortified: false`, todo.units no longer named it,
@@ -106,6 +111,10 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
   taken (paused, or replaced when it was paused), never one the command itself opened; a remote build replaces
   the unit's open order instead of being refused by it. give_order's reply carries `at`, where the run left the
   unit, and the remote build's note names that tile.
+## 2.11.0 -- Hotseat: deals and notebooks belong to one seat and one game (2026-10-31)
+
+Tagged after the fact at 8b10ac9 (runtime v332, 2070 tests), the commit that closed the milestone, when 2.13.0 was cut; the package version in that tree still reads 2.10.0. The first two entries are the 2026-10-30 follow-ups that preceded the milestone.
+
 - **A bare icon reads as its yield** (GitLab #103 follow-up from hotseat Maya t3, runtime v329). The engine writes
   some effects as icons alone -- God-King is "+1 to these yields: [ICON_CULTURE] , [ICON_PEACE] , [ICON_GOLD],
   [ICON_PRODUCTION], [ICON_RESEARCH]" -- and plain_text kept the icon's name, so it read "Culture, Peace, Gold,

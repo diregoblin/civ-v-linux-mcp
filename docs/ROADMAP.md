@@ -258,6 +258,21 @@ owner, one route-end row; seen live at t237). Tagged `v2.10.0` 2026-10-30 (runti
 the three tracking issues (#149, #150, #157) hold what the 2026-10-29 sessions found; a new play session files the next
 milestone.
 
+The three-seat hotseat of 2026-10-30 (Codex seat 0 #167, Grok seat 1 #173, Claude seat 2) filed 13 issues, planned the
+same night as three milestones: [2.11.0 Hotseat: deals and notebooks belong to one seat and one game](https://gitlab.com/Tyler-Meador/civ-v-linux-mcp/-/milestones/20)
+(the notebook collision #168 first, the unreadable human deal #174 and its other side #172, friendship with a human
+seat #175); [2.12.0 Orders report what they did](https://gitlab.com/Tyler-Meador/civ-v-linux-mcp/-/milestones/21) (the completed order counted open #181, the remote
+build pausing its own order #182, the fortify reply #176, the ruins successor #169); [2.13.0 Reads before the order](https://gitlab.com/Tyler-Meador/civ-v-linux-mcp/-/milestones/22)
+(the step cost #180, the locked ideology text #179, the belief order row #178, the city under its unit #177, the
+stale playbook examples #171). **All three shipped 2026-10-31**, each issue one commit with a regression test: the
+notebook keyed by a per-game identity (9cc36ec, runtime v330), the shared scratch trade table read seat-aware
+(50675bf, v331), a human seat asked on the trade table (8b10ac9, v332; tagged `v2.11.0` after the fact, 2070 tests);
+orders counted after they run and a command never pausing the order it creates (90edcba), the `hold` block and the
+ruins successor (6c7b76f, v333; tagged `v2.12.0` after the fact, 2094 tests); step_cost.lua porting the engine's
+movement rules and the city as the cell's ground (e9241f9, v334), locked ideologies as names, belief rows with their
+order, every served playbook example checked by a test (343af86, v335). Tagged `v2.13.0` 2026-10-31 (runtime v335,
+9 tools, 2114 tests). None of it seen live yet: docs/SESSION_HANDOFF.md lists the read-backs for the next session.
+
 ## A seat bound to its channel (fair play by mechanism)
 
 Raised 2026-10-24 (`docs/GAPS.md`, "The seat is bound to the agent's own process"). Today a `--seat N` server

@@ -25,7 +25,7 @@ the table and sees no more than you would.
 
 | Requirements | Current release | Ways to play |
 | --- | --- | --- |
-| Native Linux Steam build, Brave New World | **2.10.0** · Lua runtime **v328** | Solo · hotseat · LAN · multi-LLM |
+| Native Linux Steam build, Brave New World | **2.13.0** · Lua runtime **v335** | Solo · hotseat · LAN · multi-LLM |
 
 ## On this page
 
@@ -127,6 +127,14 @@ than on scrolling. That is what keeps a turn affordable and the game moving whil
   the engine greys a mission out: the Great Work slot census (filled / total, the buildings that carry one), the
   nearest plot where a concert tour or a trade mission plays, no moves left. A concert tour's reply says the
   tourism and who received it; a gift row names the city-state whose plot the unit stands on.
+- **A notebook belongs to one game.** Its file is keyed by the game's identity (the seat's starting plot and every
+  slot's civilization, fixed when the map is made), so a new game that founds the same capital on the same turn
+  never opens an older game's notes, assignments or standing orders; a notebook from before the key existed is
+  taken over once, marked `adopted`, its orders paused until the seat looks at them.
+- **A human seat is asked on the trade table.** In hotseat, a Declaration of Friendship to another human is a
+  deal that seat answers on its turn, war is the stock War button, denouncing is refused with why; nothing a
+  human seat is sent is answered by its dormant AI. A proposal shows only on the seat it is sent to, and the
+  answer to one echoes its items.
 - **It knows when it has won, and when it has lost.** The last spaceship part's reply says `game_over` and
   `victory: "science"`, the spaceship screen reads `complete`, and the `game_over` gate names `session(action="main_menu")`;
   the engine's own end-turn blocker freezes at that moment and is not the read to trust. A capital taken ends
@@ -292,7 +300,7 @@ the long version.
 ```bash
 sudo apt install lua5.4 liblua5.4-0   # luac for the runtime lint, liblua for the Lua tests
 uv sync --group dev
-scripts/check.sh            # 2039 tests: the shipped Lua under lupa, the Python layer against fake bridges; no game needed
+scripts/check.sh            # 2114 tests: the shipped Lua under lupa, the Python layer against fake bridges; no game needed
 ```
 
 `CIV5_CALL_LOG=/path/calls.jsonl` in the server's environment writes one line per tool call (bytes, trips,

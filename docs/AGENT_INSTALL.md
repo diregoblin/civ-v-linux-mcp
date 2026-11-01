@@ -5,7 +5,7 @@ Sid Meier's Civilization V against them or against the game's AI. This file is t
 through it top to bottom, verify each step's check before moving on, and report back in the words of the
 final section. Where a step needs the human (a Steam setting, a download), say exactly what to click and wait.
 
-Everything here was written from the repository as of package 2.10.0 (Lua runtime v328). When a command
+Everything here was written from the repository as of package 2.13.0 (Lua runtime v335). When a command
 below disagrees with the code in front of you, the code wins; say so in your report.
 
 ## 1. What you are installing
