@@ -1,4 +1,4 @@
-"""Diplomacy: relationships, friendship, war and peace, leader discussions, city-state actions and gifts, the World Congress."""
+"""Diplomacy: relationships, war and peace, leader discussions, city-state actions and gifts, the World Congress."""
 from __future__ import annotations
 
 import time
@@ -35,7 +35,7 @@ def league_compact(r):
 
 
 class DiplomacyMixin:
-    """Diplomacy: relationships, friendship, war and peace, leader discussions, city-state actions and gifts, the World Congress.
+    """Diplomacy: relationships, war and peace, leader discussions, city-state actions and gifts, the World Congress.
 
     A part of harness.game.Game (see harness/game_parts/__init__.py); `self` is the whole Game."""
 
@@ -58,10 +58,14 @@ class DiplomacyMixin:
         H.diplo_event mirrors the real UI's own preconditions (met/at-war state, CanChangeWarPeace,
         CanDeclareWar, IsForcePeace, GetNumTurnsLockedIntoWar) and returns a clean {ok:false, err:...}
         instead of a blind {ok:true} when one of those isn't satisfied. Any other event name is passed
-        through unguarded (no precondition was found for it in the game's own Lua)."""
+        through unguarded (no precondition was found for it in the game's own Lua). A human seat has no leader
+        screen (GitLab #175): an event to one is refused with the way the stock UI does it instead (`human: true`),
+        except war, which goes out as the diplomacy list's War button does."""
         return self.q(self.h("diplo_event", event, other_player, data1, data2))
 
     def declare_war(self, other_player: int) -> dict:
+        """The leader screen's Declare War against an AI; against a human seat the diplomacy list's War button
+        (diplolist.lua OnYes -> Network.SendChangeWar), which no leader answers (`human: true`)."""
         return self.diplo_event("HUMAN_DECLARES_WAR", other_player)
 
     def make_peace(self, other_player: int, items: list[dict] | None = None, pid: int | None = None) -> dict:
@@ -78,20 +82,8 @@ class DiplomacyMixin:
         return self.propose_deal(other_player, [{"type": "PEACE_TREATY"}] + list(items or []), pid=pid)
 
     def denounce(self, other_player: int) -> dict:
+        """The Discuss screen's Denounce (an AI leader only: the game has no denouncement between human players)."""
         return self.diplo_event("DENOUNCE", other_player)
-
-    def accept_friendship(self, other_player: int) -> dict:
-        """Accept a pending `DISCUSS_WORK_WITH_US` Declaration of Friendship proposal (the discussion
-        state used for every AI "let's be friends" offer seen live so far). Works whether or not the
-        DiscussionDialog is still open -- `discussiondialog.lua`'s own OnButton1 for this state does
-        nothing but this same call (`Game.DoFromUIDiploEvent(FROM_UI_DIPLO_EVENT_WORK_WITH_US_RESPONSE,
-        player, 1, 0)`; button 2 is decline, same event), so it works standalone too, and live-tested
-        working even *after* the dialog had already been declined/closed (2026-09-16, turns 258 and 263 --
-        the second time on a dialog that was still fresh, not previously declined, closing out the
-        one-off caveat from the first test). Confirm real effect with `Players[pid]:IsDoF(other_player)`
-        via `q()` if in doubt -- like every other unguarded `diplo_event`, {ok:true} only means the engine
-        call didn't error, not that the AI's own preconditions were met."""
-        return self.diplo_event("WORK_WITH_US_RESPONSE", other_player, 1, 0)
 
     def expiring_city_states(self, within: int = 3, pid: int | None = None) -> list[dict]:
         """City-states whose ally/friend status lapses within `within` turns at the current influence decay
@@ -107,52 +99,6 @@ class DiplomacyMixin:
                 for r in (rows if isinstance(rows, list) else [])
                 if isinstance(r, dict) and r.get("minor") and isinstance(r.get("turns_until_status_lost"), int)
                 and r["turns_until_status_lost"] <= within]
-
-    def propose_friendship(self, other_player: int, pid: int | None = None) -> dict:
-        """Ask an AI civ for a Declaration of Friendship: the leader screen's Discuss -> "work together" button
-        (discussiondialog.lua OnButton6 in DISCUSS_HUMAN_INVOKED root mode), with its own guards -- not already
-        friends, not IsDoFMessageTooSoon -- plus met / not at war / major civ. The AI answers through its
-        leader message; the reply reports IsDoF after a short settle (live t345: DoFs with America and Sweden
-        expired after their term and there was no way to renew them)."""
-        me = self._pid(pid)
-        pre = self.q(self.h("friendship_check", int(other_player), pid=me))
-        if not pre.get("ok"):
-            return pre
-        # The AI's answer is a reply to OUR ask: flag it harness_initiated so turn_digest does not present it as
-        # the AI approaching us (live t346 digest showed "I am happy to accept" / "Sorry, but no" as approaches).
-        self._harness_diplo(True)
-        try:
-            r = self.diplo_event("HUMAN_DISCUSSION_WORK_WITH_US", other_player, 0, 0)
-            if not r.get("ok"):
-                return r
-            time.sleep(0.5)
-            return self._friendship_result(other_player, me, pid)
-        finally:
-            self._harness_diplo(False)
-
-    def _friendship_result(self, other_player: int, me: int, pid: int | None) -> dict:
-        post = self.q(self.h("dof_with", int(other_player), pid=me))
-        out = {"ok": True, "accepted": bool(post.get("dof"))}
-        # The answer is spoken on a leader screen that then drops back to the Discuss menu (our own asks, not
-        # a question for us -- live t345 America); close it or every later action reads "decision pending".
-        # It takes a beat to come up (live t182, Mongolia: Babylon's "That will work" screen was not there
-        # 0.5 s after the ask, so nothing was closed, `reply` was the t171 line and the next finish_turn was
-        # refused with a discussion gate): wait for it the way dismiss_discussion waits for a queued leader.
-        screen = False
-        for _ in range(self._NEXT_LEADER_POLLS):
-            if self.discussion_pending():
-                screen = True
-                break
-            time.sleep(0.2)
-        try:
-            hist = self.relationship(other_player, pid).get("history") or []
-            if hist:
-                out["reply"] = hist[-1].get("text")
-        except TunerdError:
-            pass
-        if screen:
-            out["screen_closed"] = bool(self.dismiss_discussion().get("ok"))
-        return out
 
     def discussion_pending(self) -> bool:
         """True when an AI leader has opened a real negotiation/demand/trade-offer screen (the

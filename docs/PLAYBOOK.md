@@ -318,7 +318,8 @@ and sends once more.
 - War and peace: `order(to="civ", id, action="declare_war")`, `action="peace"` (with `items`),
   `action="denounce"`, `action="friendship"`; a declaration of friendship offered to you is
   `answer(choice="accept_friendship", args={"id": player})`. The AI rejects peace for about ten turns after a
-  declaration; do not spam it.
+  declaration; do not spam it. A human seat has no leader screen: `action="friendship"` sends it the declaration
+  as a deal (pending until it answers, like any human deal), and humans cannot denounce each other.
 - City-states: `state(what="city_state", id, view="summary")` for quests, tribute and protection, with the
   screen's buttons as rows (`order(to="city_state", id, action="pledge" / "bully_gold" / "make_peace" ...)`);
   `view="full"` adds the gifts, the bonuses and the units and tiles you may give; then

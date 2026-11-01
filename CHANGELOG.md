@@ -52,6 +52,21 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
   answer and the deals screen agree. #161's question() path was right; the deal seat 1 could not read was never
   its own. The answer to a human deal echoes what it answered: {ok, other, accepted_items / refused_items}, and a
   refuse of a proposal whose items did not load says `unread` and names the seat.
+- **Friendship with a human seat is a deal, not an AI's answer** (GitLab #175; three-seat hotseat 2026-10-30, t6;
+  runtime v332). Seat 1 (Celts) asked seat 2 (Indonesia, human) for a Declaration of Friendship and got
+  {"accepted": false, "reply": "Making such a declaration at this point in our relationship would be premature"} at
+  once: propose_friendship fired the leader screen's HUMAN_DISCUSSION_WORK_WITH_US at seat 2, and seat 2's dormant
+  diplomacy AI answered it; the civ summary kept the line under history. Every stock Game.DoFromUIDiploEvent call
+  names an AI (the leader screens open for AI leaders only; the diplomacy list opens the PvP table for a human).
+  Now order(to="civ", action="friendship") to a human seat proposes the PvP table's Declaration of Friendship
+  (tradelogic.lua's DoF pocket, both sides in one press) and returns propose_deal's `pvp`, `pending`, `pending_to`
+  with `friendship: true`; that seat answers it with question() / answer(choice="accept" / "refuse"). The item is
+  `DECLARATION_OF_FRIENDSHIP` in propose_deal too, and the trade catalog's `declaration_of_friendship` row is the
+  pocket's gate (asked of a human seat only: the same query about an AI crashed the game). `declare_war` on a
+  human seat is the diplomacy list's War button (Network.SendChangeWar), which no leader answers; `denounce`, the
+  raw `event` and answer(choice="accept_friendship") are refused for a human seat with what to do instead (the
+  game has no denouncement between human players). The deal-item checks moved out of deals.py into
+  `harness/game_parts/deal_items.py`, and the friendship calls out of diplomacy.py into `friendship.py`.
 
 ## 2.10.0 -- Decisions explained, lean replies (2026-10-30)
 

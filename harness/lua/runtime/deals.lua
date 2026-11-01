@@ -566,6 +566,8 @@ function H.trade_catalog(other, pid)
     embassy = pair(T.TRADE_ITEM_ALLOW_EMBASSY, duration),
     research_agreement = pair(T.TRADE_ITEM_RESEARCH_AGREEMENT, duration),
     defensive_pact = pair(T.TRADE_ITEM_DEFENSIVE_PACT, duration),
+    -- the PvP-only pocket row (GitLab #175); against an AI it only points at the leader screen
+    declaration_of_friendship = H.friendship_catalog and H.friendship_catalog(deal, pid, other) or nil,
     at_war = myTeam:IsAtWar(o:GetTeam()) or false,
     -- the Negotiate Peace gate; the treaty itself is seeded on both sides of any table by the screens (GitLab #5)
     peace = H.peace_catalog and H.peace_catalog(deal, pid, other) or nil,

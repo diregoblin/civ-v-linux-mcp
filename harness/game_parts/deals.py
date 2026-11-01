@@ -8,6 +8,7 @@ import time
 from .. import affordances as A
 from ..client import TunerdError
 
+from . import deal_items
 from .support import lua_str
 
 
@@ -337,9 +338,7 @@ class DealsMixin:
     # resource the other side does not own puts it on the table at amount 0, and opening a second trade
     # while the previous leader screen is still up talks to the OLD counterpart (a free Copper went to
     # Venice that way during development).
-    _DEAL_ITEM_TYPES = ("GOLD", "GOLD_PER_TURN", "RESOURCES", "OPEN_BORDERS", "DEFENSIVE_PACT",
-                        "RESEARCH_AGREEMENT", "TRADE_AGREEMENT", "ALLOW_EMBASSY", "CITIES", "VOTE_COMMITMENT",
-                        "THIRD_PARTY_WAR", "THIRD_PARTY_PEACE", "PEACE_TREATY")
+    _DEAL_ITEM_TYPES = deal_items.DEAL_ITEM_TYPES
 
     _TRADE_PROMPT = "What do you propose?"
 
@@ -556,125 +555,11 @@ class DealsMixin:
         return {"ok": True, "leader_says": self._trade_text()}
 
     def _check_deal_items(self, other: int, items: list[dict], pid: int, demand: bool = False) -> dict:
-        """Legality before any screen opens, with the same IsPossibleToTradeItem checks the UI uses to grey
-        out pocket entries (trade_catalog), so the caller learns WHY instead of "it silently did not land".
-        `demand`: the leader screen's Demand button (GitLab #6). tradelogic.lua hides OUR pocket in
-        DIPLO_UI_STATE_HUMAN_DEMAND, so only their items may go on the table, and leaderheadroot.lua greys
-        the button at war (the same OnShowHide that greys Trade), so a demand is never a peace deal."""
+        """Legality before any screen opens: the trade catalog's answers, applied by deal_items.check_items."""
         catalog = self.trade_catalog(other, pid)
         if not catalog.get("ok"):
             return catalog
-        cat_res = {r["resource"]: r for r in catalog.get("resources", [])}
-        peace = catalog.get("peace") or {}
-        if demand:
-            if catalog.get("at_war") or peace.get("at_war"):
-                return {"ok": False, "err": "at war with this player: the Demand button is disabled (Negotiate Peace is the only table; see order(to='civ', action='peace'))"}
-            for it in items:
-                if not isinstance(it, dict):
-                    return {"ok": False, "err": f"each item must be an object like {{\"type\": ..., \"from_us\": false}}, got {it!r}"}
-                if it.get("type") == "PEACE_TREATY":
-                    return {"ok": False, "err": "a demand carries no peace treaty (not at war)"}
-                if it.get("from_us", True):
-                    return {"ok": False, "err": f"a demand lists only what THEY hand over (from_us: false); {it.get('type')} was marked as ours -- "
-                                                "the screen hides our own pocket in demand mode"}
-        if peace.get("at_war") and not peace.get("ok"):
-            # At war the screens seed a peace treaty on both sides of any table (tradelogic.lua OnOpenPlayerDealScreen;
-            # the engine after HUMAN_NEGOTIATE_PEACE), so every deal is a peace deal and the leader screen's Negotiate
-            # Peace gate applies to all of it (GitLab #5).
-            return {"ok": False, "err": "at war with this player and peace cannot be negotiated right now"
-                                        + (f": {peace['note']}" if peace.get("note") else ""), "peace": peace}
-        for it in items:
-            if not isinstance(it, dict):
-                return {"ok": False, "err": f"each item must be an object like {{\"type\": ..., \"from_us\": ...}}, got {it!r}"}
-            t = it.get("type")
-            if t not in self._DEAL_ITEM_TYPES:
-                return {"ok": False, "err": f"unsupported item type {t!r}; supported: {list(self._DEAL_ITEM_TYPES)}"}
-            side = "us" if it.get("from_us", True) else "them"
-            me_them = "me" if side == "us" else "them"
-            i_they = "I" if side == "us" else "they"
-            amount = it.get("amount")
-            if t in ("GOLD", "GOLD_PER_TURN", "RESOURCES") and amount is not None:
-                # The trade screen clamps a typed amount to what the side has before the engine sees it
-                # (tradelogic.lua ChangeGoldAmount / ChangeGoldPerTurnAmount / ChangeResourceAmount). Refuse
-                # out-of-range amounts here instead of letting them reach ChangeGoldTrade & co.
-                if isinstance(amount, bool) or not isinstance(amount, int) or amount <= 0:
-                    return {"ok": False, "err": f"{t} amount must be a positive whole number, got {amount!r}"}
-                if t in ("GOLD", "GOLD_PER_TURN"):
-                    avail = (catalog.get({"GOLD": "gold", "GOLD_PER_TURN": "gold_per_turn"}[t]) or {}).get(f"{side}_available")
-                    if isinstance(avail, (int, float)) and amount > avail:
-                        return {"ok": False, "err": f"{t} amount {amount} exceeds what {i_they} can put on the table right now ({int(avail)})",
-                                "available": int(avail)}
-            if t == "RESOURCES":
-                r = it.get("resource", "")
-                r = r if r.startswith("RESOURCE_") else "RESOURCE_" + r
-                entry = cat_res.get(r)
-                if not entry or not entry.get(side):
-                    who = "I" if side == "us" else "they"
-                    return {"ok": False, "err": f"{r} cannot be traded from {me_them} to this player right now "
-                                                f"(the receiving side already has it, or {who} have no spare copy of it)",
-                            "tradeable_resources": [{"resource": k, "from_me": v.get("us"), "from_them": v.get("them")} for k, v in cat_res.items()]}
-                avail = entry.get(f"{side}_available")
-                if amount is not None and isinstance(avail, (int, float)) and amount > avail:
-                    return {"ok": False, "err": f"{r} amount {amount} exceeds the {int(avail)} copies {i_they} can trade", "available": int(avail)}
-            elif t == "CITIES":
-                # OnChooseCity -> deal:AddCityTrade(player, id) is unconditional in tradelogic.lua; the real UI
-                # only offers cities that pass IsPossibleToTradeItem(TRADE_ITEM_CITIES, x, y). Same gate here.
-                cities = (catalog.get("cities") or {}).get(side) or []
-                city_id = it.get("city_id")
-                if isinstance(city_id, bool) or not isinstance(city_id, int):
-                    return {"ok": False, "err": "CITIES needs an integer city_id (see state(what='cities') / state(what='civ', view='trade_catalog').cities)",
-                            "tradeable_cities": cities}
-                if city_id not in {c.get("id") for c in cities}:
-                    return {"ok": False, "err": f"city {city_id} is not tradeable from {me_them} to this player right now "
-                                                "(not owned by that side, or the game does not allow trading it)",
-                            "tradeable_cities": cities}
-            elif t == "PEACE_TREATY":
-                # No pocket button exists for this: the treaty is on the table the moment a screen opens while at
-                # war, and cannot be put there at peace. Listing it only states the intent (make_peace does).
-                if not peace.get("at_war"):
-                    return {"ok": False, "err": "PEACE_TREATY: not at war with this player", "peace": peace}
-            elif t in ("THIRD_PARTY_WAR", "THIRD_PARTY_PEACE"):
-                # The Other Players pocket (tradelogic.lua ShowOtherPlayerChooser) greys out every leader that fails
-                # IsPossibleToTradeItem(from, to, type, team); LeaderSelected -> AddThirdPartyWar/Peace is then
-                # unconditional. trade_catalog().third_party is that list with the screen's reasons (GitLab #6).
-                kind = "war" if t == "THIRD_PARTY_WAR" else "peace"
-                rows = ((catalog.get("third_party") or {}).get(kind) or {}).get(side) or []
-                who = it.get("other")
-                if isinstance(who, bool) or not isinstance(who, int):
-                    return {"ok": False, "err": f"{t} needs an integer `other` player id (see state(what='civ', view='trade_catalog').third_party.{kind})",
-                            "third_party": rows}
-                row = next((r for r in rows if r.get("player") == who), None)
-                if row is None:
-                    return {"ok": False, "err": f"player {who} is not on the Other Players list for this deal (unmet by one side, or one of the two parties)",
-                            "third_party": rows}
-                if not row.get("ok"):
-                    return {"ok": False, "err": f"{t} against {row.get('name') or who} from {me_them} is greyed out on the trade screen"
-                                                + (f": {row['note']}" if row.get("note") else ""),
-                            "third_party": rows}
-            elif t == "VOTE_COMMITMENT":
-                # The Pocket Votes list (tradelogic.lua RefreshPocketVotes) only offers (proposal, choice) pairs
-                # that pass IsPossibleToTradeItem for that direction; trade_catalog().vote_commitments is that
-                # list. OnChoosePocketVote -> AddVoteCommitment is unconditional, so the gate lives here (GitLab #7).
-                votes = catalog.get("vote_commitments") or []
-                rid, cid, repeal = it.get("resolution_id"), it.get("choice_id"), bool(it.get("repeal", False))
-                if any(isinstance(v, bool) or not isinstance(v, int) for v in (rid, cid)):
-                    return {"ok": False, "err": "VOTE_COMMITMENT needs integer resolution_id and choice_id "
-                                                "(see state(what='civ', view='trade_catalog').vote_commitments / state(what='league'))",
-                            "tradeable_votes": votes}
-                match = next((v for v in votes if v.get("resolution_id") == rid and v.get("choice_id") == cid
-                              and bool(v.get("repeal")) == repeal), None)
-                if not match or not match.get(side):
-                    return {"ok": False, "err": f"that vote commitment cannot be traded from {me_them} to this player right now "
-                                                "(no such pending proposal/choice, or the World Congress does not allow it)",
-                            "tradeable_votes": votes}
-            else:
-                key = {"GOLD": "gold", "GOLD_PER_TURN": "gold_per_turn", "OPEN_BORDERS": "open_borders", "DEFENSIVE_PACT": "defensive_pact",
-                       "RESEARCH_AGREEMENT": "research_agreement", "TRADE_AGREEMENT": "trade_agreement", "ALLOW_EMBASSY": "embassy"}[t]
-                flag = catalog.get(key)
-                if isinstance(flag, dict) and not flag.get(side):
-                    return {"ok": False, "err": f"{t} from {'me' if side == 'us' else 'them'} is not legal with this player right now (see state(what='civ', view='trade_catalog'))",
-                            "catalog": {key: flag}}
-        return {"ok": True}
+        return deal_items.check_items(catalog, items, demand=demand)
 
     def _add_deal_items(self, other: int, items: list[dict], pid: int) -> dict:
         """Put each item on the open table through tradelogic.lua's own pocket handlers, then read the table
@@ -687,7 +572,7 @@ class DealsMixin:
             is_us = 1 if from_us else 0
             who = pid if from_us else other
             amount = it.get("amount")
-            if t in ("DEFENSIVE_PACT", "RESEARCH_AGREEMENT", "TRADE_AGREEMENT"):
+            if t in deal_items.PAIR_ITEM_TYPES:
                 # tradelogic.lua's pocket handler for these puts the PAIR on the table in one press (a row from
                 # each side); an item of the type from the other side pressed it again -- live t196 Venice's
                 # research agreement with England held two pairs and cost 468 gold instead of 234.
@@ -741,10 +626,7 @@ class DealsMixin:
                 code = (f"UpdateLeagueVotes(); local idx = GetLeagueVoteIndexFromData({rid}, {cid}, {rep});"
                         f" if not idx then error('vote commitment {rid}/{cid} is not in the pocket') end; OnChoosePocketVote({who}, idx)")
             else:
-                handler = {"OPEN_BORDERS": "PocketOpenBordersHandler", "DEFENSIVE_PACT": "PocketDefensivePactHandler",
-                           "RESEARCH_AGREEMENT": "PocketResearchAgreementHandler", "TRADE_AGREEMENT": "PocketTradeAgreementHandler",
-                           "ALLOW_EMBASSY": "PocketAllowEmbassyHandler"}[t]
-                code = f"{handler}({is_us})"
+                code = f"{deal_items.POCKET_HANDLERS[t]}({is_us})"
             if code is None:
                 continue
             try:
@@ -771,7 +653,7 @@ class DealsMixin:
                 if t == "VOTE_COMMITMENT" and (g.get("resolution_id") != it.get("resolution_id") or g.get("choice_id") != it.get("choice_id")
                                                or bool(g.get("repeal")) != bool(it.get("repeal", False))):
                     continue
-                if t in ("DEFENSIVE_PACT", "RESEARCH_AGREEMENT", "TRADE_AGREEMENT") and match is not None:
+                if t in deal_items.PAIR_ITEM_TYPES and match is not None:
                     continue
                 match = g
                 break
@@ -810,6 +692,7 @@ class DealsMixin:
           {"type": "VOTE_COMMITMENT", "from_us": true, "resolution_id": 5, "choice_id": 1, "repeal": false}
           {"type": "THIRD_PARTY_WAR"|"THIRD_PARTY_PEACE", "from_us": true, "other": 23}   (player id of the third party)
           {"type": "PEACE_TREATY"}   (at war only; the screens seed it on both sides themselves -- see make_peace)
+          {"type": "DECLARATION_OF_FRIENDSHIP"}   (human seats only, both sides in one press -- see propose_friendship)
         Returns {ok, accepted, reply, table, effects}. `effects` is measured (gold, gold/turn, happiness,
         deal count, per-resource import/export before vs after), not inferred from the reply text. With
         `ask_counter=True` a rejection is followed by the AI's own "what would make this work" counter

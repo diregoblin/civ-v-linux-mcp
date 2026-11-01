@@ -309,6 +309,10 @@ VOTE_COMMITMENT (resolution_id, choice_id, repeal: a World Congress vote pledge;
 vote goes on the table, as the screen's pocket does -- pick from the trade catalog's vote_commitments),
 THIRD_PARTY_WAR / THIRD_PARTY_PEACE (other: player id; the side declares war on / makes peace with that
 civ or city-state when the deal is accepted -- pick an `ok` row from the trade catalog's third_party).
+DECLARATION_OF_FRIENDSHIP (no fields; human seats only, both sides in one press, the catalog's
+`declaration_of_friendship` row is its gate): order(to="civ", action="friendship") to a human seat sends exactly
+this deal and adds `friendship: true` to the pending reply (GitLab #175). An AI leader is asked on its leader
+screen instead and answers at once (`accepted`, `reply`).
 PEACE_TREATY (no fields): at war every table carries the treaty on both sides (the screens seed it), so any
 A proposal while at war is a peace deal with terms; refused with the leader screen's reason while locked
 into war -- see the trade catalog's `peace`, or order(to="civ", id, action="peace", args={items}).

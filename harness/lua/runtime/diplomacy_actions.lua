@@ -111,12 +111,40 @@ function H.game_state_name(v) return H.enum_name("GameplayGameStateTypes", Gamep
 -- `IsHasMet` precondition and the `IsAtWar` branch explicitly so NEGOTIATE_PEACE/DECLARES_WAR can only ever
 -- fire on the side of that branch the real UI would have offered. DENOUNCE has no equivalent precondition
 -- in discussiondialog.lua (just a confirm click straight to DoFromUIDiploEvent) so it stays unguarded here.
+--
+-- A human seat has no leader screen (GitLab #175). Every stock call of Game.DoFromUIDiploEvent names an AI:
+-- leaderheadroot.lua / discussiondialog.lua open for AI leaders only, and tradelogic.lua's calls sit in its
+-- non-PvP branch; diplolist.lua / diplorelationships.lua open the PvP trade table for a human instead. An event
+-- sent to a human seat is answered by that seat's dormant diplomacy AI on the spot (three-seat hotseat t6:
+-- Celts -> Indonesia "friendship" came back "Making such a declaration at this point in our relationship would
+-- be premature" and the civ summary kept the line). So the human seat gets what the stock UI gives it: war is
+-- diplolist.lua's War button (OnYes -> Network.SendChangeWar(team, true)), a Declaration of Friendship is a deal
+-- item (tradelogic.lua PocketDoFHandler, g_bPVPTrade only), and the rest is refused with where to go instead.
+local HUMAN_SEAT_INSTEAD = {
+  FROM_UI_DIPLO_EVENT_HUMAN_DISCUSSION_WORK_WITH_US =
+    "a Declaration of Friendship with a human seat is a deal: order(to='civ', action='friendship') puts it on the "
+    .. "trade table and that seat answers it on its turn",
+  FROM_UI_DIPLO_EVENT_WORK_WITH_US_RESPONSE =
+    "a human seat's Declaration of Friendship comes as a deal: question() shows it, answer(choice='accept') takes it",
+  FROM_UI_DIPLO_EVENT_HUMAN_NEGOTIATE_PEACE =
+    "peace with a human seat is a deal: order(to='civ', action='peace') sends the treaty for that seat to answer",
+  FROM_UI_DIPLO_EVENT_DENOUNCE =
+    "the game has no denouncement between human players: denouncing is a leader-screen discussion with an AI, "
+    .. "and a human seat's diplomacy screen opens only the trade table",
+}
+
 function H.diplo_event(pid, event_name, other_player, data1, data2)
   if Game.GetActivePlayer() ~= pid then return { ok = false, err = "this seat is not active" } end
   local key = event_name
   if not key:match("^FROM_UI_DIPLO_EVENT_") then key = "FROM_UI_DIPLO_EVENT_" .. key end
   local id = FromUIDiploEventTypes[key]
   if id == nil then return { ok = false, err = "unknown diplo event " .. tostring(event_name) } end
+  local o = Players[other_player]
+  local human = o and o:IsHuman() and true or false
+  if human and key ~= "FROM_UI_DIPLO_EVENT_HUMAN_DECLARES_WAR" then
+    return { ok = false, human = true, event = key,
+             err = HUMAN_SEAT_INSTEAD[key] or "a human seat has no leader screen: its events are answered by no one" }
+  end
 
   if key == "FROM_UI_DIPLO_EVENT_HUMAN_NEGOTIATE_PEACE" or key == "FROM_UI_DIPLO_EVENT_HUMAN_DECLARES_WAR" then
     local myTeam = Teams[Players[pid]:GetTeam()]
@@ -146,6 +174,19 @@ function H.diplo_event(pid, event_name, other_player, data1, data2)
       if not myTeam:CanDeclareWar(otherTeam) then
         return { ok = false, err = "cannot declare war on this player right now" }
       end
+      if human then
+        -- diplolist.lua shows the War button for a human only without ALWAYS_WAR / ALWAYS_PEACE / NO_CHANGING_WAR_PEACE
+        -- and on another team; its confirm (OnYes) is Network.SendChangeWar(team, true).
+        local fixed = false
+        pcall(function()
+          fixed = Game.IsOption(GameOptionTypes.GAMEOPTION_ALWAYS_WAR) or Game.IsOption(GameOptionTypes.GAMEOPTION_ALWAYS_PEACE)
+                  or Game.IsOption(GameOptionTypes.GAMEOPTION_NO_CHANGING_WAR_PEACE)
+        end)
+        if fixed then return { ok = false, err = "the game options do not allow changing war and peace" } end
+        if otherTeam == Players[pid]:GetTeam() then return { ok = false, err = "that player is on our team" } end
+        Network.SendChangeWar(otherTeam, true)
+        return { ok = true, event = key, human = true }
+      end
     end
   end
 
@@ -162,10 +203,40 @@ function H.friendship_check(other, pid)
   if not myTeam:IsHasMet(o:GetTeam()) then return { ok = false, err = "not met" } end
   if myTeam:IsAtWar(o:GetTeam()) then return { ok = false, err = "at war with them" } end
   if o:IsDoF(pid) then return { ok = false, err = "already friends (declaration still running)" } end
+  -- A human seat is asked on the trade table (GitLab #175): the too-soon memory is the AI's leader screen.
+  if o:IsHuman() then return { ok = true, human = true } end
   if o:IsDoFMessageTooSoon(pid) then
     return { ok = false, err = "asked too recently; the leader screen greys this out -- try again in a few turns" }
   end
   return { ok = true }
+end
+
+-- The trade table's Declaration of Friendship row (tradelogic.lua, "Pocket Declaration of Friendship"): shown
+-- only when g_bPVPTrade ("with the AI there is a dedicated interface for this trade"), lit when
+-- IsPossibleToTradeItem(us, them, TRADE_ITEM_DECLARATION_OF_FRIENDSHIP, duration), and one press puts it on both
+-- sides (PocketDoFHandler). Never asked about an AI: that query crashed the game natively (docs/NOTES.md).
+function H.friendship_catalog(deal, pid, other)
+  local o, T = Players[other], TradeableItems
+  if not (o and T and T.TRADE_ITEM_DECLARATION_OF_FRIENDSHIP) then return nil end
+  if not o:IsHuman() then
+    return { us = false, them = false, ai = true,
+             note = "an AI leader is asked on the leader screen: order(to='civ', action='friendship')" }
+  end
+  local ok, v = pcall(function()
+    return deal:IsPossibleToTradeItem(pid, other, T.TRADE_ITEM_DECLARATION_OF_FRIENDSHIP, Game.GetDealDuration())
+  end)
+  local legal = ok and v and true or false
+  local out = { us = legal, them = legal }
+  if not legal then
+    -- the pocket's greyed tooltip: TXT_KEY_DIPLO_DECLARATION_OF_FRIENDSHIP_AT_WAR, else _ALREADY_EXISTS
+    local at_war = false
+    pcall(function() at_war = Teams[Players[pid]:GetTeam()]:IsAtWar(o:GetTeam()) end)
+    local dof = false
+    pcall(function() dof = Players[pid]:IsDoF(other) end)
+    out.note = at_war and "not while at war" or dof and "a Declaration of Friendship with this player is already in force"
+               or "the engine does not allow a Declaration of Friendship with this player right now"
+  end
+  return out
 end
 
 function H.dof_with(other, pid)
