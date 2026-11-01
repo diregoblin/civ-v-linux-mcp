@@ -17,6 +17,27 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
 ## Unreleased
 
 ### Fixed
+- **A tactical neighbour says what the step costs and which enemy's zone of control ends it** (GitLab #180,
+  runtime v334, three-seat hotseat, seat 1 Celts t11 / t16). A Warrior with 2 moves read a plains neighbour as
+  `move: open` with nothing else, stepped there and arrived with 0: a barbarian stood next to both plots, and
+  leaving a plot next to an enemy for another plot next to the same enemy spends every move; a Scout stepping out
+  of a barbarian's reach did the same. Every open neighbour now carries `cost` (the moves the step spends) and
+  `left` (the moves after it; with none left now, from next turn's full moves), and `zoc` names the enemy unit
+  (`id`, `unit`, `x`, `y`, `owner`) or city whose zone of control ends the move there. Plot:MovementCost crashed
+  the game (t183), so the new step_cost.lua reads BNW's CvUnitMovement::MovementCost off the engine's getters and
+  tables inside the view's one Lua call: all moves for zone of control (visible enemy combat units and cities next
+  to the unit, not an embarked enemy, an enemy ship only onto water, none under an IgnoreZOC promotion), a river
+  crossed without a bridged road (Team:IsBridgeBuilding, Unit:IsRiverCrossingNoPenalty), embarking and
+  disembarking; one move for FlatMovementCost or an EmbarkedToLandFlatCost disembark; otherwise the feature's or
+  terrain's Movement, HILLS_EXTRA_MOVEMENT on hills without a city, GetExtraMoveDiscount, the double-move
+  promotions, FasterInHills, the Great Wall, and a usable road or railroad on both plots (Routes.Movement plus
+  Team:GetRouteChange, FlatMovement x base moves; MoveFriendlyWoodsAsRoad). A fogged plot is priced as last seen.
+  Not yet seen live: the numbers against the engine's own move on rivers, roads and forested hills.
+- **The tactical grid keeps a city under the unit standing in it** (GitLab #177, seat 1 Celts t4). A Scout on
+  Edinburgh read `.@`: the cell is two letters and this unit's `@` replaced the city's `C`, while `cities` still had
+  Edinburgh at distance 0. A city in sight is now the cell's ground letter and its units the occupant: `C@` this
+  unit in a city, `Cu` / `Co` a garrison, `CX` an enemy city, `C ` an empty one; a fogged city stays remembered
+  terrain plus `?` (it is in `cities`). The legend (docs/TOOL_REPLIES.md) and the one-line key say so.
 - **A hold order says what the unit is doing, and Wake is a row** (GitLab #176, runtime v333, three-seat hotseat,
   seat 1 Celts t7 / t12 / t24). MISSION_FORTIFY on a Warrior that had moved answered `activity_name:
   SLEEP_OR_FORTIFY` with its move left, units() read `SLEEP`, `fortified: false`, todo.units no longer named it,

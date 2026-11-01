@@ -251,7 +251,7 @@ Every order returns the state it could read back. Check it before moving on:
 - `order(to="unit", id, action="move", args={"x", "y"})` returns the unit's new `x`, `y`, `moves`. If they did
   not change, the path was blocked or the unit had no moves; do not re-issue blindly. Read
   `state(what="unit", id, view="tactical")`: each neighbour's `move` says whether the move would be refused
-  and why.
+  and why; an open step's `cost` / `left` say what it spends and `zoc` which enemy ends the move there.
 - `action="mission"` with `MISSION_FOUND` on a settler with 0 moves does nothing and silently resets. Move
   first, found next turn when `moves > 0`, then confirm with `state(what="cities")`.
 - `MISSION_BUILD` takes `build="BUILD_FARM"` (the improvement id) in `args`, never x/y. The result says whether

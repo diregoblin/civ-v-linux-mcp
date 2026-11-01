@@ -13,7 +13,7 @@ state that survives a reload), `json.lua`, `helpers.lua` (localisation, enum and
 `events.lua` (event log, rosters, hooks), then the game domains -- empire, units, city views and actions, map,
 diplomacy, policies, notifications, city strikes, unit orders, popup choosers, religion, deals, war,
 city-states, trade routes, league, overviews, espionage, research, production, unit actions, combat and its
-previews, tactical view, movement, turn state, victory, the reference rule book, briefing, assignments,
+previews, step cost, tactical view, movement, turn state, victory, the reference rule book, briefing, assignments,
 comparisons -- and `install.lua`, which runs last and installs the hooks.
 
 A new `H.*` function goes into the file of its domain. Keep a domain's reads, legality checks and writes

@@ -13,9 +13,10 @@ from . import guide
 #: The reply reference's heading in docs/TOOL_REPLIES.md, and the section name a reader passes to reference().
 TOPIC = 'state(what="unit", view="tactical")'
 
-#: The one-line key: enough to read the grid and the `move` column without the legend.
-KEY = ("cell = terrain+occupant: M mountain ~ water H hills F forest . open _ unrevealed | @ this unit X hostile "
-       "C city u yours o other ? fogged; move: attack / open / refused (why) / enemy; "
+#: The one-line key: enough to read the grid and the `move` column without the legend (a city is the cell's ground, GitLab
+#: #177; an open step's cost, GitLab #180).
+KEY = ("cell = ground+occupant: M mountain ~ water H hills F forest . open C city _ unrevealed | @ this unit X hostile "
+       "u yours o other ? fogged; move: attack / open (cost, left, zoc) / refused (why) / enemy; "
        f"the legend: reference(book='playbook', section='{TOPIC}')")
 
 

@@ -139,8 +139,8 @@ class ReadsMixin:
 
     def tactical_view(self, unit_id: int, radius: int | None = None, detail: str = "summary", pid: int | None = None) -> dict:
         """One bounded read around one unit (#31): its six neighbours by coordinate with what move_unit would do
-        there (the same checks move_unit makes; no path cost or turns, which the engine cannot give safely), river
-        crossings, visible occupants and known cities within `radius`, fog counts, the unit's attack targets with
+        there (the same checks move_unit makes), an open step's cost and the zone of control that ends it (GitLab #180;
+        no turns-to-reach, which the engine cannot give safely), river crossings, visible occupants and known cities within `radius`, fog counts, the unit's attack targets with
         the existing combat previews, and a lettered grid (its legend once per process, GitLab #152). detail="full" adds every revealed plot
         in radius as map_window reads it and keeps the previews' modifier rows.
         radius=None (runtime v261) lets the unit's own sight set it: as far as the engine's canSeePlot reaches for

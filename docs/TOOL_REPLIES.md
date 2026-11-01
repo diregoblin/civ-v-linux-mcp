@@ -239,17 +239,21 @@ it to: only one standing in a city of mine can be given a route at all.
 
 How to read the tactical view's `grid`, `move`, `vis`, `sight` and `fog`:
 
-- **grid**: each cell is two letters, terrain then occupant; rows run north (top) to south, the number is y;
+- **grid**: each cell is two letters, ground then occupant; rows run north (top) to south, the number is y;
   odd rows sit half a cell to the right (Civ V's offset hexes), so a cell's neighbours are the two beside it and
   the two touching it in the rows above and below; `cols` is each column's x (-1 = off the map; a wrapped map
   repeats x); a blank cell (two spaces) is off the map or farther than `radius`, the same plots `occupants` and
-  `fog` cover. Terrain: M mountain/impassable, ~ water, H hills, F forest/jungle/marsh, . open, _ unrevealed.
-  Occupant: @ this unit, X hostile unit or city, C city, u your unit, o another player's unit, ? fogged (last
-  seen, may hide units), blank = seen, empty.
+  `fog` cover. Ground: C city in sight, M mountain/impassable, ~ water, H hills, F forest/jungle/marsh, . open,
+  _ unrevealed. Occupant: @ this unit, X hostile unit or city, u your unit, o another player's unit, ? fogged
+  (last seen, may hide units; a fogged city is in `cities`), blank = seen, empty. `C@` is this unit in a city.
 - **move**: what `order(to="unit", action="move")` does with a one-step order there: `attack` = a melee attack
-  (preview in `targets`); `open` = the order is sent (no path cost or turns are estimated; the engine's pathing
-  decides); `refused` = the order refuses it, `why` says why; `enemy` = a visible enemy you cannot melee. Every
-  open or attack neighbour carries `call`, the move order ready to copy.
+  (preview in `targets`); `open` = the order is sent; `refused` = the order refuses it, `why` says why; `enemy` =
+  a visible enemy you cannot melee. Every open or attack neighbour carries `call`, the move order ready to copy.
+  An open step carries `cost` (moves it spends) and `left` (moves after it; with none left now, from next turn's
+  full moves); `zoc` names the enemy unit or city whose zone of control ends the move there (leaving a plot next
+  to an enemy for another plot next to it spends every move). A river crossed without a bridged road, embarking
+  and disembarking also spend every move. The cost follows the engine's rules on the plots as you see them; no
+  turns-to-reach are estimated beyond one step.
 - **vis**: `visible` = in sight now; `fogged` = last seen, occupants unknown; `unrevealed` = never seen.
 - **sight**: `unit.sight` is what this unit itself sees (the engine's canSeePlot: high ground adds a plot, hills
   and forest in between block); `unit.fire_los` the same test with a ranged unit's attack range, which a ranged

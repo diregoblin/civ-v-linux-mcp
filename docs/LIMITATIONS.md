@@ -29,9 +29,9 @@ engine, not inferred; the check is named. `docs/GAPS.md` keeps the full audit hi
 - **Path overlay and movement cost.** `Unit:GeneratePath` throws (not implemented), `GetPathEndTurnPlot`
   needs the mouse pathfinder, and `Plot:MovementCost` crashed the process (t183) even inside `pcall`. The
   harness never invents turns-to-reach; the frontier read reports hex distance over the revealed map,
-  the tactical view reports per neighbour only what a move would be refused before sending (`open` is not a
-  cost), and
-  the tile carries its yields, fresh water, routes and resource hover instead. Trade-route lines are a
+  the tactical view reports per neighbour what a move would be refused before sending and, for an open step,
+  its cost and the zone of control that ends it (read off the engine's movement rules, not Plot:MovementCost),
+  and the tile carries its yields, fresh water, routes and resource hover instead. Trade-route lines are a
   different thing and are readable: the trade-routes screen's `path` is the plot hover's route list on every
   revealed plot (runtime v212), with the caravan, its escort and enemies beside the line.
 - **Estimates the engine does not compute.** `compare`'s `estimated_change` is city arithmetic from the

@@ -66,11 +66,17 @@ function H.remember_feature(plot, team, feature)
   cache[feature_key(plot)] = feature
 end
 
-function H.remembered_feature(plot, team)
+-- The feature id last seen on a plot, or nil (never seen since load, or seen bare).
+local function remembered_feature_id(plot, team)
   local cache = H.seen_features[team] or H.seed_seen_features(team)
   local f = cache[feature_key(plot)]
   if f == nil or f < 0 then return nil end
-  return short(info_type(GameInfo.Features, f))
+  return f
+end
+
+function H.remembered_feature(plot, team)
+  local f = remembered_feature_id(plot, team)
+  return f and short(info_type(GameInfo.Features, f)) or nil
 end
 
 -- The met, living players' cities by plot, built once per turn and team (the revealed map describes thousands
@@ -510,3 +516,4 @@ end
 
 -- Shared with later fragments, which import these at their top (load order: harness/runtime_source.py MANIFEST).
 H._ns.resource_hover = resource_hover
+H._ns.remembered_feature_id = remembered_feature_id

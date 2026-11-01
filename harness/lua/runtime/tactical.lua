@@ -1,6 +1,6 @@
 -- Shared by earlier fragments (load order: harness/runtime_source.py MANIFEST).
 local info_id, info_type, move_denom = H._ns.info_id, H._ns.info_type, H._ns.move_denom
-local short = H._ns.short
+local short, step_costs = H._ns.short, H._ns.step_costs
 
 -- ActivityTypes by the engine's own names (raw ints otherwise mean nothing to a caller), the words units() reads
 -- through H.unit_activity. ACTIVITY_SLEEP is both a sleep and a fortify; `hold` (H.unit_hold_state) says which
@@ -199,14 +199,17 @@ local function river_crossing(a, b, d)
   return (ok and v) and true or nil
 end
 
--- A plot's grid cell: terrain letter then occupant letter (the legend is the reply reference, docs/TOOL_REPLIES.md state(what="unit", view="tactical"); GitLab #152).
+-- A plot's grid cell: ground letter then occupant letter (the legend is the reply reference, docs/TOOL_REPLIES.md state(what="unit", view="tactical"); GitLab #152).
+-- The ground is the terrain, or C for a city in sight: the city is the plot, its units are what stands on it, so a unit
+-- in a city keeps the city drawn (GitLab #177, Celts t4: a Scout on Edinburgh read ".@" and the city was gone).
 -- Fog rules as describe_plot: a fogged plot shows remembered terrain and '?' for its occupant.
 local ROUGH_FEATURES = { FOREST = true, JUNGLE = true, MARSH = true }
 local function tactical_cell(q, team, u, pid, hostile_at)
   if not q then return "  " end
   if not q:IsRevealed(team, false) then return "__" end
   local t = "."
-  if q:IsMountain() or q:IsImpassable() then t = "M"
+  if q:IsVisible(team, false) and q:IsCity() then t = "C"
+  elseif q:IsMountain() or q:IsImpassable() then t = "M"
   elseif q:IsWater() then t = "~"
   elseif q:IsHills() then t = "H"
   else
@@ -223,7 +226,6 @@ local function tactical_cell(q, team, u, pid, hostile_at)
   if q:GetX() == u:GetX() and q:GetY() == u:GetY() then return t .. "@" end
   local k = q:GetX() .. "," .. q:GetY()
   if hostile_at[k] then return t .. "X" end
-  if q:IsCity() then return t .. "C" end
   local mine, other = false, false
   for i = 0, q:GetNumUnits() - 1 do
     local o = q:GetUnit(i)
@@ -242,9 +244,10 @@ end
 -- occupants and known cities in `radius`, and the unit's attack targets with the combat panel's own previews
 -- (H.melee_targets / H.ranged_targets, not a second combat model). Fog is the human's: a fogged plot shows
 -- what was last seen and never a live occupant; an unrevealed one shows nothing but that it is unrevealed.
--- Movement: `move` is move_unit's own answer before it sends anything (H.move_refusal, the same checks);
--- "open" means only that move_unit would send the order -- there is no path cost or turns-to-reach, because
--- Unit:GeneratePath is NYI and Plot:MovementCost crashes the game (docs/LIMITATIONS.md).
+-- Movement: `move` is move_unit's own answer before it sends anything (H.move_refusal, the same checks); an open
+-- step says what it costs this unit (`cost`, `left`, in moves) and names the enemy whose zone of control ends the
+-- move there (`zoc`), from step_cost.lua (GitLab #180). There are no turns-to-reach: Unit:GeneratePath is NYI and
+-- Plot:MovementCost crashes the game (docs/LIMITATIONS.md).
 function H.tactical_view(unit_id, pid, radius, detail)
   local p = Players[pid]
   local u = p and p:GetUnitByID(unit_id)
@@ -462,6 +465,8 @@ function H.tactical_view(unit_id, pid, radius, detail)
 
   -- The six neighbours: coordinates, remembered terrain, river crossing, occupants, and move_unit's answer.
   local move_mission = info_id("MISSION_MOVE_TO")
+  local okc, step_cost = pcall(step_costs, u, pid)   -- nil: no cost is read (an air unit, or a getter failed)
+  if not okc then step_cost = nil end
   local neighbors = {}
   for d = 0, 5 do
     local q = Map.PlotDirection(ux, uy, d)
@@ -519,6 +524,13 @@ function H.tactical_view(unit_id, pid, radius, detail)
             if ok and can then n.move = "open" else n.move = "refused"; n.why = "move is not currently legal" end
           else
             n.move = "open"
+          end
+          if n.move == "open" and step_cost then
+            local okn, c = pcall(step_cost, q, e.city ~= nil, n.river_crossing)
+            if okn and c then
+              n.cost, n.left = c.cost, c.left
+              if c.zoc then label(c.zoc.owner); n.zoc = c.zoc end
+            end
           end
         end
       end

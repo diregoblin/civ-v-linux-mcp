@@ -69,6 +69,8 @@ MANIFEST: tuple[str, ...] = (
     "unit_actions.lua",       # legal actions and missions per unit, action help, todo_actions
     "combat.lua",             # melee defender and peaceful-occupant facts, combat modifier rows (cm_*), city strike modifiers
     "combat_previews.lua",    # melee and ranged previews and targets, air strikes, interception, attack before/after
+    "step_cost.lua",          # what one step to a neighbour costs a unit, zone of control included (#180);
+                              #   shared local: step_costs
     "tactical.lua",           # activity names, unit_pos, explore frontier, tactical view
     "movement.lua",           # move_unit / move_refusal, standing moves, unit missions, automate and build checks
     "turn.lua",               # popups, blockers, todo, turn_state, expiring deals, notification log, net players

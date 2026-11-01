@@ -268,6 +268,31 @@ class TacticalViewLuaTests(unittest.TestCase):
         for _, r in ipairs(v.grid.rows) do assert(not r:find('X', 1, true), 'no hostile drawn: ' .. r) end
         """)
 
+    def test_a_city_stays_drawn_under_the_unit_standing_in_it(self):
+        """GitLab #177 (Celts t4): a Scout standing on Edinburgh read ".@" -- the unit mark replaced the city's -- while
+        cities[] still had Edinburgh at distance 0. A city is the cell's ground, its units the occupant."""
+        self.run_lua("""
+        local function city(name, owner)
+          return { GetName = function() return name end, GetOwner = function() return owner end,
+                   GetPopulation = function() return 1 end, GetMaxHitPoints = function() return 200 end,
+                   GetDamage = function() return 0 end, IsRevealed = function() return true end }
+        end
+        unit(1, 0, 1, 2, 2)
+        P['2,2'].o.city = city('Edinburgh', 0)           -- the Scout's own plot
+        P['0,2'].o.city = city('Dunedin', 0)             -- our city with our worker in it
+        unit(5, 0, 4, 0, 2, { civilian = true })
+        P['4,2'].o.city = city('Susa', 3)                -- Persia's, at peace, empty
+        local v = H.tactical_view(1, 0, 2, 'summary')
+        assert(v.grid.rows[3] == '  2 Cu. C@. C ', '[' .. v.grid.rows[3] .. ']')
+        assert(v.cities[1].name == 'Edinburgh' and v.cities[1].distance == 0)
+        Teams[0].IsAtWar = function(_, t) return t == 63 or t == 3 end
+        v = H.tactical_view(1, 0, 2, 'summary')
+        assert(v.grid.rows[3] == '  2 Cu. C@. CX', 'an enemy city: [' .. v.grid.rows[3] .. ']')
+        P['4,2'].o.fog = true                            -- a fogged city: remembered terrain, never a live read
+        v = H.tactical_view(1, 0, 2, 'summary')
+        assert(v.grid.rows[3] == '  2 Cu. C@. .?', 'fog: [' .. v.grid.rows[3] .. ']')
+        """)
+
     def test_targets_are_the_existing_previews_and_mark_the_neighbour(self):
         self.run_lua("""
         unit(1, 0, 1, 2, 2)

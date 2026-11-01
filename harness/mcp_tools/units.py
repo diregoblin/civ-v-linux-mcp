@@ -109,8 +109,8 @@ def tactical_view(unit_id: int, radius: int | None = None, detail: str = "summar
     by coordinate and direction (NE, E, SE, SW, W, NW; the engine's own adjacency, so map wrap and the edge rows
     need no hex arithmetic), each with terrain, river_crossing, owner, visible units and `move`: attack (a melee
     attack; its preview is in targets), open (move_unit would send the order), refused (move_unit would refuse it,
-    `why` says why) or enemy (a visible enemy this unit cannot melee). `open` is not a path cost: turns-to-reach and
-    movement cost are not available. `targets` are the unit's melee and ranged targets with the combat previews
+    `why` says why) or enemy (a visible enemy this unit cannot melee). An open step says its `cost` and the moves
+    `left` after it, and `zoc` when an enemy's zone of control ends the move there; no turns-to-reach. `targets` are the unit's melee and ranged targets with the combat previews
     available_unit_actions gives. `occupants` (visible units, hostile first) and `cities` (a fogged one is
     last_seen) cover `radius` (1-5; by default as far as this unit itself sees or shoots, at least 2); `fog` counts
     visible, fogged and unrevealed plots there, and unseen_within_2 is how many plots within two cannot be seen:
