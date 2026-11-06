@@ -1,4 +1,26 @@
-# Resume here -- 2026-10-31 (night): main = 2.13.1 (runtime v335, 9 tools, 2114 tests; tagged 2026-10-31; 2.13.1 is the README correction patch, with v2.11.0 and v2.12.0 backfilled at 8b10ac9 / 6c7b76f).
+# Resume here -- 2026-11-05 (evening): main = 2.13.1 + one unreleased fix (runtime v335, 9 tools, 2115 tests).
+**The last two open issues, the trackers #167 (Codex, seat 0) and #173 (Grok, seat 1), are closed**: every fix of
+milestones 2.11.0-2.13.0 was read back live on the three-seat save `GrokVCodexVClaude` (hotseat/, t27 -> t29),
+one seat at a time through `scripts/mcp_session.py --seat N` (drivers and logs under `logs/readback-2026-11-05/`,
+gitignored). Seen: #168 (per-seat identity in the key, only this game's notes on all three seats, the worker's
+order paused `adopted`, identity / notes / pause identical across save -> main_menu -> load_latest), #174 + #172
+(seat 0's DoF to seat 1 read on seat 1 and invisible to seat 2; seat 1's GPT offer read and refused on seat 2 with
+the items; seat 0's DoF to seat 2 read nothing on seat 1, accepted on seat 2), #175 (IsDoF true both ways after
+each accept), #176 (`hold` block; GetFortifyTurns 0 / 1 / 2 over t27-t29; a fortify at 0 moves is reported as a
+one-turn skip), #180 (cost 1 / left 1 then cost 1 / left 0, the moves matched), #179 (locked ideologies as names),
+#169 (seven real ruins gave no upgrade; the fourth ruin planted beside a spawned Scout did: the move reply named
+Atlatlist 122892). **One gap found and fixed, unreleased:** a MISSION_SKIP retry on the vanished Scout's id answered a
+bare "no such unit"; `unit_mission` now runs `_refusal_names_successor` as `move_unit` does (CHANGELOG Unreleased,
+2115 tests). Not re-read live: #177, #178, #171, #181, #182. **The game on screen is that hotseat game at t29, seat
+0's turn, with nine Lua-spawned Scouts / one Atlatlist** and seat 0's supply in deficit; the quick slot is that
+state (copied to `hotseat/GrokVCodexVClaude_0029 readback-2026-11-05`), the named t27 save is untouched. The stack
+is up (Steam, Civ5XP launched 20:37 by `scripts/launch_civ5.sh main`, tunerd on the plain daemon). Driver lessons:
+a settle loop must handle research, policy, promotions, city production (PROCESS_WEALTH needs Currency: pick from
+the production read) and a leader screen before `end`, or the next seat's `wait` blocks for its whole cap; a
+`pkill -f` naming the script kills the shell that runs it. Next: cut 2.13.2 (or fold the fix into the next
+milestone); the next play session files the next milestone. **No GitLab issue is open.**
+
+# Previous -- 2026-10-31 (night): main = 2.13.1 (runtime v335, 9 tools, 2114 tests; tagged 2026-10-31; 2.13.1 is the README correction patch, with v2.11.0 and v2.12.0 backfilled at 8b10ac9 / 6c7b76f).
 **The thirteen issues of the 2026-10-30 three-seat hotseat (milestones 2.11.0, 2.12.0, 2.13.0) are fixed on main
 and released**, each as one commit with a regression test and a GitLab note: #168 (9cc36ec, the notebook key ends in a
 per-game identity, old-key notebooks adopted once and quarantined), #174 + #172 (50675bf, the shared hotseat scratch

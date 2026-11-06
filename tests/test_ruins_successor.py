@@ -150,6 +150,17 @@ class MoveReplyTests(unittest.TestCase):
         g = _move_game({"ok": False, "err": "no such unit"}, [("H.successor_of(", {"ok": True})])
         self.assertEqual(g.move_unit(24576, 22, 21), {"ok": False, "err": "no such unit"})
 
+    def test_a_mission_retry_is_refused_naming_the_successor_too(self):
+        # live 2026-11-05 t28: MISSION_SKIP to the Scout the ruins had just replaced answered a bare "no such unit";
+        # the naming was on the move path only
+        g = _game([("H.unit_mission(", {"ok": False, "err": "no such unit"}),
+                   ("H.successor_of(", {"ok": True, "successor": dict(ATLATLIST, turn=5, how="order")})])
+        r = g.unit_mission(24576, "MISSION_SKIP")
+        self.assertFalse(r["ok"])
+        self.assertIn("MAYAN_ATLATLIST 32770 (turn 5); nothing was sent", r["err"])
+        self.assertEqual(r["successor"]["id"], 32770)
+        self.assertEqual(r["actions"][0]["args"]["id"], 32770)
+
 
 class DigestRowTests(unittest.TestCase):
     START = {"kind": "turn_start", "turn": 5, "data": {"player": 0}}

@@ -16,6 +16,12 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
 
 ## Unreleased
 
+- **A mission to a unit the ruins replaced is refused naming the successor, as a move is** (GitLab #169 read-back,
+  three-seat hotseat t28, 2026-11-05): the planted-ruins check saw the move reply name the Atlatlist that replaced
+  the Scout, then `MISSION_SKIP` to the old id answered a bare "no such unit" -- `_refusal_names_successor` ran on
+  the move path only. `unit_mission` runs it too, so a hold, skip or build sent to a vanished id says which unit
+  to order instead and carries the tactical read of that unit. 2115 tests.
+
 ## 2.13.1 -- README corrections (2026-10-31)
 
 - **The README says what the code does now.** Its claims were checked against the vocabulary, the CLI, the

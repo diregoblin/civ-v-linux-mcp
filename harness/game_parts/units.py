@@ -596,6 +596,7 @@ class UnitsMixin:
             except (TunerdError, AttributeError):
                 pillage_gold0 = None
         r = self._unit_mission(unit_id, mission, x, y, data2, build, pid)
+        r = self._refusal_names_successor(r, unit_id, pid)   # #169: a mission to an id the ruins replaced (live t28)
         if tour0 and isinstance(r, dict) and r.get("consumed"):
             # live t232: the reply was {ok, consumed} -- no tourism figure, no receiving civ
             r["effect"] = {k: tour0.get(k) for k in ("tourism", "others_percent") if tour0.get(k) is not None}
