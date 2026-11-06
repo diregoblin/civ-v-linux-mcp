@@ -17,8 +17,8 @@ state (copied to `hotseat/GrokVCodexVClaude_0029 readback-2026-11-05`), the name
 is up (Steam, Civ5XP launched 20:37 by `scripts/launch_civ5.sh main`, tunerd on the plain daemon). Driver lessons:
 a settle loop must handle research, policy, promotions, city production (PROCESS_WEALTH needs Currency: pick from
 the production read) and a leader screen before `end`, or the next seat's `wait` blocks for its whole cap; a
-`pkill -f` naming the script kills the shell that runs it. Next: cut 2.13.2 (or fold the fix into the next
-milestone); the next play session files the next milestone. **No GitLab issue is open.**
+`pkill -f` naming the script kills the shell that runs it. Next (the user's call, 2026-11-05): no 2.13.2; the fix rides in
+Unreleased until the next milestone's release. The next play session files that milestone. **No GitLab issue is open.**
 
 # Previous -- 2026-10-31 (night): main = 2.13.1 (runtime v335, 9 tools, 2114 tests; tagged 2026-10-31; 2.13.1 is the README correction patch, with v2.11.0 and v2.12.0 backfilled at 8b10ac9 / 6c7b76f).
 **The thirteen issues of the 2026-10-30 three-seat hotseat (milestones 2.11.0, 2.12.0, 2.13.0) are fixed on main
