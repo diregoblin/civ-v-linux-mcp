@@ -302,7 +302,7 @@ function H.move_refusal(u, dest, pid, fog_safe)
       city = { name = c:GetName(), owner = c:GetOwner(), x = dest:GetX(), y = dest:GetY() } }
   end)
   if occupied_city then return occupied_city end
-  -- Another major civ's territory is closed without open borders (or war); the engine finds no path
+  -- Another team's major civ territory is closed without open borders (or war); the engine finds no path
   -- and drops the order silently (live t256: Caravel -> India's coast). Name the owner instead.
   local closed = nil
   pcall(function()
@@ -317,7 +317,9 @@ function H.move_refusal(u, dest, pid, fog_safe)
       -- Inquisitors) enters closed borders by rule; live Assyria t141 the guard refused a Missionary bound for the
       -- Zulu capital while the engine's own flag said yes.
       local ignores_borders = u.IsRivalTerritory and u:IsRivalTerritory() or false
-      if o and theirTeam and not o:IsMinorCiv() and not myTeam:IsAtWar(o:GetTeam()) and not ignores_borders
+      -- Teammates share movement access without an open-borders deal (including team hotseat).
+      if o and theirTeam and o:GetTeam() ~= Players[pid]:GetTeam()
+         and not o:IsMinorCiv() and not myTeam:IsAtWar(o:GetTeam()) and not ignores_borders
          and not (theirTeam.IsAllowsOpenBordersToTeam and theirTeam:IsAllowsOpenBordersToTeam(Players[pid]:GetTeam())) then
         closed = { ok = false, err = "destination is inside " .. o:GetCivilizationShortDescription()
                    .. "'s borders and you have no open-borders agreement with them (trade one via order(to='civ', action='propose_deal'), or path around)",

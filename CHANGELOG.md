@@ -16,6 +16,13 @@ Dates are the day the change was committed; "live tNNN" is the game turn it was 
 
 ## Unreleased
 
+- **Teammates can enter each other's territory without an open-borders deal** (runtime v336).
+  The shared move/tactical guard compared player ids but omitted team ids, so ordinary units in a
+  same-team hotseat game were refused at a teammate's border, including on city plots the city guard
+  already allowed. Same-team destinations now skip only the closed-border refusal; other movement
+  checks and foreign-team border rules remain in force. Regression cases cover combat and civilian
+  units, ordinary and city plots, and live and fog-safe checks.
+
 - **A mission to a unit the ruins replaced is refused naming the successor, as a move is** (GitLab #169 read-back,
   three-seat hotseat t28, 2026-11-05): the planted-ruins check saw the move reply name the Atlatlist that replaced
   the Scout, then `MISSION_SKIP` to the old id answered a bare "no such unit" -- `_refusal_names_successor` ran on

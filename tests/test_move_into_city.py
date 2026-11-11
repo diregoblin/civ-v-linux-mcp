@@ -140,6 +140,61 @@ class MoveIntoCityTests(unittest.TestCase):
         assert(pushed == true)
         """)
 
+    def test_teammate_territory_and_cities_need_no_open_borders_agreement(self):
+        """Player ids differ in team hotseat; both orders and tactical checks must allow the same team."""
+        for combat in (False, True):
+            for city in (False, True):
+                for fog_safe in (False, True):
+                    with self.subTest(combat=combat, city=city, fog_safe=fog_safe):
+                        self.run_lua(f"""
+                        unit.IsCombatUnit = function() return {str(combat).lower()} end
+                        Players[3] = {{GetTeam = function() return 0 end,
+                          IsMinorCiv = function() return false end,
+                          GetCivilizationShortDescription = function() return 'China' end}}
+                        Teams[0].IsAllowsOpenBordersToTeam = function() return false end
+                        aim_at(3, 0, true)
+                        local dest = Map.GetPlot()
+                        dest.IsCity = function() return {str(city).lower()} end
+                        dest.IsVisible = function() return {str(not fog_safe).lower()} end
+                        dest.GetRevealedOwner = function() return 3 end
+                        Map.GetPlot = function() return dest end
+                        local refusal = H.move_refusal(unit, dest, 0, {str(fog_safe).lower()})
+                        assert(refusal == nil, 'a teammate needs no border deal: ' ..
+                          tostring(refusal and refusal.err))
+                        pushed = false
+                        local r = H.move_unit(1, 49, 5, 0)
+                        assert(r.ok == true, 'the move must reach the engine: ' .. tostring(r.err))
+                        assert(pushed == true)
+                        """)
+
+    def test_foreign_team_still_needs_open_borders_or_war(self):
+        for at_war, open_borders in ((False, False), (False, True), (True, False)):
+            for fog_safe in (False, True):
+                with self.subTest(at_war=at_war, open_borders=open_borders, fog_safe=fog_safe):
+                    self.run_lua(f"""
+                    AT_WAR = {str(at_war).lower()}
+                    Players[3] = {{GetTeam = function() return 3 end,
+                      IsMinorCiv = function() return false end,
+                      GetCivilizationShortDescription = function() return 'China' end}}
+                    Teams[3] = {{IsAllowsOpenBordersToTeam = function() return {str(open_borders).lower()} end}}
+                    aim_at(3, 3, true)
+                    local dest = Map.GetPlot()
+                    dest.IsCity = function() return false end
+                    dest.IsVisible = function() return {str(not fog_safe).lower()} end
+                    dest.GetRevealedOwner = function() return 3 end
+                    Map.GetPlot = function() return dest end
+                    local refusal = H.move_refusal(unit, dest, 0, {str(fog_safe).lower()})
+                    pushed = false
+                    local r = H.move_unit(1, 49, 5, 0)
+                    if {str(at_war or open_borders).lower()} then
+                      assert(refusal == nil and r.ok == true and pushed == true, tostring(r.err))
+                    else
+                      assert(refusal and refusal.owner_player_id == 3)
+                      assert(r.ok == false and r.err:find('open%-borders'), tostring(r.err))
+                      assert(pushed == false, 'closed foreign borders must still block the order')
+                    end
+                    """)
+
 
 if __name__ == "__main__":
     unittest.main()
